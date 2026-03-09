@@ -56,6 +56,7 @@ pub struct App {
     cached_filtered_indices: Vec<usize>,
     scan_rx: Option<std::sync::mpsc::Receiver<Result<ScanResult>>>,
     running: bool,
+    save_success_time: Option<Instant>,
 }
 
 impl App {
@@ -81,7 +82,8 @@ impl App {
             search_mode: false,
             cached_filtered_indices: Vec::new(),
             scan_rx: None,
-            running: true
+            running: true,
+            save_success_time: None,
         }
     }
 
@@ -341,6 +343,8 @@ fn handle_results_input(app: &mut App, key: KeyCode) {
             if let Err(e) = export_json(app) {
                 app.scan_error = Some(format!("Export failed: {e}"));
                 app.screen = Screen::Menu;
+            } else {
+                app.save_success_time = Some(Instant::now());
             }
         }
         KeyCode::Char('f') | KeyCode::Char('/') => {
@@ -362,7 +366,7 @@ fn handle_detail_input(app: &mut App, key: KeyCode) {
 
 fn export_json(app: &App) -> Result<()> {
     if let Some(ref result) = app.scan_result {
-        let json = serde_json::to_string_pretty(&result.issues)?;
+        let json = serde_json::to_string_pretty(&result)?;
         std::fs::write("image-audit-report.json", json)?;
     }
     Ok(())
@@ -729,6 +733,27 @@ fn draw_results(f: &mut Frame, app: &mut App) {
     .style(Style::default().bg(Color::Rgb(12, 12, 20)));
 
     f.render_widget(help, chunks[4]);
+    
+    // Success message overlay
+    if let Some(instant) = app.save_success_time {
+        if instant.elapsed() < Duration::from_secs(3) {
+            let area = centered_rect(30, 10, f.area());
+            f.render_widget(Clear, area);
+            f.render_widget(
+                Paragraph::new("Report saved successfully!")
+                    .alignment(Alignment::Center)
+                    .block(
+                        Block::default()
+                            .borders(Borders::ALL)
+                            .border_type(BorderType::Rounded)
+                            .border_style(Style::default().fg(Color::Rgb(99, 235, 180))),
+                    ),
+                area,
+            );
+        } else {
+            app.save_success_time = None;
+        }
+    }
 }
 
 fn draw_detail(f: &mut Frame, app: &mut App) {

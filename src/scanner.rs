@@ -69,7 +69,7 @@ pub struct Issue {
     pub message: String,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct ScanResult {
     pub issues: Vec<Issue>,
     pub files_scanned: usize,

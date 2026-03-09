@@ -1,6 +1,6 @@
 # 🖼 Image Auditor
 
-A blazing-fast Rust TUI tool that scans your HTML/JS/TS codebase for image delivery issues — the kind flagged by Lighthouse and Core Web Vitals.
+A blazing-fast Rust TUI tool that scans your HTML/PHTML/JS/TS codebase for image delivery issues — the kind flagged by Lighthouse and Core Web Vitals.
 
 ## Detected Issues
 
