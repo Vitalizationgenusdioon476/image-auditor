@@ -1,8 +1,30 @@
-# 🖼 Image Auditor
+# 🖼 Image Auditor Tool
 
-A blazing-fast Rust TUI tool that scans your HTML/PHTML/JS/TS codebase for image delivery issues — the kind flagged by Lighthouse and Core Web Vitals.
+**Find and fix image performance problems in seconds.**
 
-## Detected Issues
+This tool is a **blazing-fast Rust TUI** that scans your codebase
+for image delivery issues that damage **Core Web Vitals**, **Lighthouse
+scores**, and **SEO performance**.
+
+It detects the exact problems that slow down modern sites --- **missing
+lazy loading, wrong formats, layout shifts, and oversized images** ---
+directly inside your HTML, templates, and frontend code.
+
+Perfect for **frontend developers, performance engineers, and ecommerce
+teams** who care about **LCP, CLS, and page speed**.
+
+## ⚡ Key Features
+
+-   **Extremely fast Rust scanner** for large codebases
+-   **Interactive terminal UI (TUI)** for easy navigation
+-   Detects **real Lighthouse / Core Web Vitals problems**
+-   Works across **HTML, template engines, and modern JS frameworks**
+-   Instant filtering by **severity**
+-   Export results to **JSON reports**
+-   Copy file paths directly from the UI
+
+
+## 🔎 Detected Issues
 
 | Issue | Severity |
 |---|---|
@@ -13,19 +35,22 @@ A blazing-fast Rust TUI tool that scans your HTML/PHTML/JS/TS codebase for image
 | Missing `srcset` / responsive images | ℹ Info |
 | JSX `<Image>` missing `alt` attribute | ⚠ Warning |
 
-## Scanned File Types
+## 📁 Supported File Types
 
 `html`, `phtml`, `htm`, `jsx`, `tsx`, `js`, `ts`, `vue`, `svelte`, `hbs`, `ejs`, `njk`, `php`
 
 Automatically skips: `node_modules`, `.git`, `dist`, `build`, `.next`
 
-## Install
+## 🎬 Video Demo
+![demo.gif](docs/images/demo.gif)
+
+# ⚡ Install
 
 ```bash
 cargo install --path .
 ```
 
-## Usage
+# 🧪 Usage
 
 ```bash
 # Launch interactive TUI (menu to pick path)
@@ -36,7 +61,7 @@ image-auditor ./my-project
 image-auditor /var/www/html
 ```
 
-## TUI Controls
+## 🖥 TUI Controls
 
 | Key | Action |
 |---|---|
@@ -48,9 +73,10 @@ image-auditor /var/www/html
 | `3` | Warnings only |
 | `4` | Info only |
 | `s` | Save report to `image-audit-report.json` |
+| `c` | Copy current row file path to clipboard |
 | `q / Esc` | Back / quit |
 
-## Build
+## 🏗 Build
 
 ```bash
 cargo build --release

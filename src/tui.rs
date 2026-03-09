@@ -57,6 +57,7 @@ pub struct App {
     scan_rx: Option<std::sync::mpsc::Receiver<Result<ScanResult>>>,
     running: bool,
     save_success_time: Option<Instant>,
+    copy_success_time: Option<Instant>,
 }
 
 impl App {
@@ -84,6 +85,7 @@ impl App {
             scan_rx: None,
             running: true,
             save_success_time: None,
+            copy_success_time: None,
         }
     }
 
@@ -350,6 +352,16 @@ fn handle_results_input(app: &mut App, key: KeyCode) {
         KeyCode::Char('f') | KeyCode::Char('/') => {
             app.search_mode = true;
         }
+        KeyCode::Char('c') => {
+            if let Some(idx) = app.table_state.selected() {
+                if let Some(issue) = issues.get(idx) {
+                    let path = issue.file.to_string_lossy().to_string();
+                    if copy_to_clipboard(&path).is_ok() {
+                        app.copy_success_time = Some(Instant::now());
+                    }
+                }
+            }
+        }
         _ => {}
     }
 }
@@ -369,6 +381,22 @@ fn export_json(app: &App) -> Result<()> {
         let json = serde_json::to_string_pretty(&result)?;
         std::fs::write("image-audit-report.json", json)?;
     }
+    Ok(())
+}
+
+fn copy_to_clipboard(text: &str) -> Result<()> {
+    use std::process::{Command, Stdio};
+    use std::io::Write;
+
+    let mut child = Command::new("pbcopy")
+        .stdin(Stdio::piped())
+        .spawn()?;
+
+    if let Some(mut stdin) = child.stdin.take() {
+        stdin.write_all(text.as_bytes())?;
+    }
+
+    child.wait()?;
     Ok(())
 }
 
@@ -636,7 +664,7 @@ fn draw_results(f: &mut Frame, app: &mut App) {
             Cell::from(Span::styled(issue.line.to_string(), Style::default().fg(Color::Rgb(120, 130, 160)))),
             Cell::from(Span::styled(kind_str, Style::default().fg(Color::Rgb(150, 200, 180)))),
             Cell::from(Span::styled(
-                issue.message.chars().take(55).collect::<String>(),
+                issue.message.chars().take(100).collect::<String>(),
                 Style::default().fg(Color::Rgb(170, 175, 200)),
             )),
         ])
@@ -652,7 +680,7 @@ fn draw_results(f: &mut Frame, app: &mut App) {
             Constraint::Length(22),
             Constraint::Length(5),
             Constraint::Length(24),
-            Constraint::Min(20),
+            Constraint::Min(50),
         ],
     )
     .header(
@@ -727,6 +755,8 @@ fn draw_results(f: &mut Frame, app: &mut App) {
         Span::styled("=search  ", Style::default().fg(Color::Rgb(80, 90, 130))),
         Span::styled("s", Style::default().fg(Color::Rgb(99, 235, 180)).add_modifier(Modifier::BOLD)),
         Span::styled("=save JSON  ", Style::default().fg(Color::Rgb(80, 90, 130))),
+        Span::styled("c", Style::default().fg(Color::Rgb(99, 235, 180)).add_modifier(Modifier::BOLD)),
+        Span::styled("=copy path  ", Style::default().fg(Color::Rgb(80, 90, 130))),
         Span::styled("Enter", Style::default().fg(Color::Rgb(99, 235, 180)).add_modifier(Modifier::BOLD)),
         Span::styled("=detail", Style::default().fg(Color::Rgb(80, 90, 130))),
     ]))
@@ -752,6 +782,26 @@ fn draw_results(f: &mut Frame, app: &mut App) {
             );
         } else {
             app.save_success_time = None;
+        }
+    }
+
+    if let Some(instant) = app.copy_success_time {
+        if instant.elapsed() < Duration::from_secs(3) {
+            let area = centered_rect(30, 10, f.area());
+            f.render_widget(Clear, area);
+            f.render_widget(
+                Paragraph::new("Path copied to clipboard!")
+                    .alignment(Alignment::Center)
+                    .block(
+                        Block::default()
+                            .borders(Borders::ALL)
+                            .border_type(BorderType::Rounded)
+                            .border_style(Style::default().fg(Color::Rgb(99, 235, 180))),
+                    ),
+                area,
+            );
+        } else {
+            app.copy_success_time = None;
         }
     }
 }
