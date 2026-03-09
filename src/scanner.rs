@@ -3,7 +3,7 @@ use std::sync::OnceLock;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use walkdir::WalkDir;
-use anyhow::{Context, Result};
+use anyhow::Result;
 
 static IMG_TAG_RE: OnceLock<Regex> = OnceLock::new();
 static IMG_START_RE: OnceLock<Regex> = OnceLock::new();
@@ -113,8 +113,22 @@ pub fn scan_directory(root: &Path) -> Result<ScanResult> {
 
         result.files_scanned += 1;
 
-        let content = std::fs::read_to_string(path)
-            .with_context(|| format!("Failed to read file: {}", path.display()))?;
+        let content = match std::fs::read_to_string(path) {
+            Ok(c) => c,
+            Err(e) => {
+                // If we can't read the file, report it as an issue but don't fail the whole scan
+                // Can be caused some encoding issues or file permissions
+                result.issues.push(Issue {
+                    file: path.strip_prefix(root).unwrap_or(path).to_path_buf(),
+                    line: 0,
+                    kind: IssueKind::OversizedFile,
+                    severity: IssueSeverity::Error,
+                    snippet: "File Read Error".to_string(),
+                    message: format!("Permission denied or read error: {}", e),
+                });
+                continue;
+            }
+        };
         
         let file_issues = scan_file(path, &content, root);
         let img_count = count_images_in_file(&content);
