@@ -122,7 +122,7 @@ ACTIVE_LLM_PROVIDER=openai
 OPENAI_API_KEY=your-openai-api-key
 # Optional:
 # OPENAI_BASE_URL=https://api.openai.com
-# OPENAI_MODEL=gpt-4.1-mini
+# OPENAI_MODEL=gpt-5.2
 ```
 
 #### Anthropic

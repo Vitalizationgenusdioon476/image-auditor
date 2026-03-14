@@ -34,7 +34,7 @@ pub fn load_llm_config() -> Result<Option<LlmConfig>> {
         LlmProvider::OpenAi => {
             let key = env::var("OPENAI_API_KEY").ok();
             let endpoint = env::var("OPENAI_BASE_URL").ok();
-            let model = env::var("OPENAI_MODEL").unwrap_or_else(|_| "gpt-4.1-mini".to_string());
+            let model = env::var("OPENAI_MODEL").unwrap_or_else(|_| "gpt-5.2".to_string());
             (key, endpoint, model)
         }
         LlmProvider::Anthropic => {

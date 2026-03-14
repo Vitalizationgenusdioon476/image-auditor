@@ -1,4 +1,3 @@
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
@@ -8,7 +7,6 @@ use crate::config::{LlmConfig, LlmProvider};
 
 #[derive(Debug, Clone)]
 pub struct SuggestedPatch {
-    pub file_path: PathBuf,
     pub before: String,
     pub after: String,
 }
@@ -36,15 +34,8 @@ fn parse_suggestion_with_patch(raw: &str) -> LlmSuggestion {
     if let Some(start) = raw.find("---PATCH---") {
         if let Some(end) = raw[start..].find("---END_PATCH---") {
             let block = &raw[start..start + end];
-            let mut file_path: Option<PathBuf> = None;
             let mut before = String::new();
             let mut after = String::new();
-
-            for line in block.lines() {
-                if let Some(rest) = line.strip_prefix("file:") {
-                    file_path = Some(PathBuf::from(rest.trim()));
-                }
-            }
 
             let before_marker = "BEFORE:";
             let end_before = "---END_BEFORE---";
@@ -65,16 +56,11 @@ fn parse_suggestion_with_patch(raw: &str) -> LlmSuggestion {
                 }
             }
 
-            let patch = if let Some(path) = file_path.clone() {
-                if !before.is_empty() && !after.is_empty() {
-                    Some(SuggestedPatch {
-                        file_path: path,
-                        before,
-                        after,
-                    })
-                } else {
-                    None
-                }
+            let patch = if !before.is_empty() && !after.is_empty() {
+                Some(SuggestedPatch {
+                    before,
+                    after,
+                })
             } else {
                 None
             };
