@@ -1,7 +1,7 @@
 use std::{
     io,
     path::PathBuf,
-    sync::{mpsc, Arc},
+    sync::{Arc, mpsc},
     time::{Duration, Instant},
 };
 
@@ -9,9 +9,10 @@ use anyhow::Result;
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyModifiers},
     execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
 use ratatui::{
+    Frame, Terminal,
     backend::CrosstermBackend,
     layout::{Alignment, Constraint, Direction, Layout, Margin},
     style::{Color, Modifier, Style},
@@ -20,12 +21,11 @@ use ratatui::{
         Block, BorderType, Borders, Cell, Clear, List, ListItem, ListState, Paragraph, Row,
         Scrollbar, ScrollbarOrientation, ScrollbarState, Table, TableState, Tabs, Wrap,
     },
-    Frame, Terminal,
 };
 
 use crate::config::load_llm_config;
-use crate::llm::{create_llm_client, LlmClient, LlmSuggestion, SuggestedPatch};
-use crate::scanner::{scan_directory, Issue, IssueKind, IssueSeverity, ScanResult};
+use crate::llm::{LlmClient, LlmSuggestion, SuggestedPatch, create_llm_client};
+use crate::scanner::{Issue, IssueKind, IssueSeverity, ScanResult, scan_directory};
 
 #[derive(PartialEq)]
 enum Screen {
@@ -116,12 +116,17 @@ impl App {
             return;
         };
 
-        self.cached_filtered_indices = result.issues.iter().enumerate()
+        self.cached_filtered_indices = result
+            .issues
+            .iter()
+            .enumerate()
             .filter(|(_, i)| {
                 if self.search_query.is_empty() {
                     return true;
                 }
-                let file_name = i.file.file_name()
+                let file_name = i
+                    .file
+                    .file_name()
                     .and_then(|n| n.to_str())
                     .unwrap_or("")
                     .to_lowercase();
@@ -148,8 +153,11 @@ impl App {
     }
 
     fn filtered_issues(&self) -> Vec<Issue> {
-        let Some(ref result) = self.scan_result else { return vec![] };
-        self.cached_filtered_indices.iter()
+        let Some(ref result) = self.scan_result else {
+            return vec![];
+        };
+        self.cached_filtered_indices
+            .iter()
             .filter_map(|&idx| result.issues.get(idx).cloned())
             .collect()
     }
@@ -176,7 +184,11 @@ pub fn run(path: Option<PathBuf>) -> Result<()> {
     let res = run_app(&mut terminal, &mut app);
 
     disable_raw_mode()?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen, DisableMouseCapture)?;
+    execute!(
+        terminal.backend_mut(),
+        LeaveAlternateScreen,
+        DisableMouseCapture
+    )?;
     terminal.show_cursor()?;
 
     if let Err(e) = res {
@@ -207,7 +219,9 @@ fn run_app<B: ratatui::backend::Backend>(terminal: &mut Terminal<B>, app: &mut A
     let mut last_tick = Instant::now();
 
     loop {
-        terminal.draw(|f| ui(f, app)).map_err(|e| anyhow::anyhow!(e.to_string()))?;
+        terminal
+            .draw(|f| ui(f, app))
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
 
         if !app.running {
             break Ok(());
@@ -281,9 +295,15 @@ fn handle_menu_input(app: &mut App, key: KeyCode, modifiers: KeyModifiers) {
                     start_scan(app);
                 }
             }
-            KeyCode::Esc => { app.input_mode = false; }
-            KeyCode::Backspace => { app.input_path.pop(); }
-            KeyCode::Char(c) => { app.input_path.push(c); }
+            KeyCode::Esc => {
+                app.input_mode = false;
+            }
+            KeyCode::Backspace => {
+                app.input_path.pop();
+            }
+            KeyCode::Char(c) => {
+                app.input_path.push(c);
+            }
             _ => {}
         }
         return;
@@ -301,13 +321,15 @@ fn handle_menu_input(app: &mut App, key: KeyCode, modifiers: KeyModifiers) {
             let i = app.menu_state.selected().unwrap_or(0);
             app.menu_state.select(Some((i + 1).min(1)));
         }
-        KeyCode::Enter | KeyCode::Char(' ') => {
-            match app.menu_state.selected() {
-                Some(0) => { app.input_mode = true; }
-                Some(1) => { app.running = false; }
-                _ => {}
+        KeyCode::Enter | KeyCode::Char(' ') => match app.menu_state.selected() {
+            Some(0) => {
+                app.input_mode = true;
             }
-        }
+            Some(1) => {
+                app.running = false;
+            }
+            _ => {}
+        },
         _ => {}
     }
 }
@@ -429,9 +451,10 @@ fn handle_detail_input(app: &mut App, key: KeyCode) {
     if app.detail_patch_confirm_mode {
         match key {
             KeyCode::Char('y') => {
-                if let (Some(issue), Some(patch)) =
-                    (app.detail_issue.as_ref(), app.detail_suggested_patch.as_ref())
-                {
+                if let (Some(issue), Some(patch)) = (
+                    app.detail_issue.as_ref(),
+                    app.detail_suggested_patch.as_ref(),
+                ) {
                     if let Err(e) = apply_suggested_patch(issue, patch) {
                         app.detail_patch_error = Some(format!("Patch failed: {}", e));
                     } else {
@@ -461,10 +484,19 @@ fn handle_detail_input(app: &mut App, key: KeyCode) {
             app.detail_scroll = 0;
         }
         KeyCode::Char('a') => {
+            // If issue type is WrongFormat ignore action
+            if matches!(
+                app.detail_issue.as_ref().map(|i| &i.kind),
+                Some(IssueKind::WrongFormat)
+            ) {
+                return;
+            }
             if app.detail_loading_suggestion {
                 return;
             }
-            let Some(issue) = app.detail_issue.clone() else { return };
+            let Some(issue) = app.detail_issue.clone() else {
+                return;
+            };
             let Some(client) = app.llm_client.clone() else {
                 app.detail_suggestion_error = Some("LLM provider not configured.".to_string());
                 return;
@@ -488,6 +520,14 @@ fn handle_detail_input(app: &mut App, key: KeyCode) {
             });
         }
         KeyCode::Char('p') => {
+            // If issue type is WrongFormat ignore action
+            if matches!(
+                app.detail_issue.as_ref().map(|i| &i.kind),
+                Some(IssueKind::WrongFormat)
+            ) {
+                return;
+            }
+
             if app.detail_suggested_patch.is_some() {
                 app.detail_patch_confirm_mode = true;
                 app.detail_patch_error = None;
@@ -509,12 +549,10 @@ fn export_json(app: &App) -> Result<()> {
 }
 
 fn copy_to_clipboard(text: &str) -> Result<()> {
-    use std::process::{Command, Stdio};
     use std::io::Write;
+    use std::process::{Command, Stdio};
 
-    let mut child = Command::new("pbcopy")
-        .stdin(Stdio::piped())
-        .spawn()?;
+    let mut child = Command::new("pbcopy").stdin(Stdio::piped()).spawn()?;
 
     if let Some(mut stdin) = child.stdin.take() {
         stdin.write_all(text.as_bytes())?;
@@ -558,34 +596,45 @@ fn draw_menu(f: &mut Frame, app: &mut App) {
 
     // Title banner
     let banner = vec![
-        Line::from(vec![
-            Span::styled("  ██╗███╗   ███╗ █████╗  ██████╗ ███████╗", Style::default().fg(Color::Rgb(99, 179, 237))),
-        ]),
-        Line::from(vec![
-            Span::styled("  ██║████╗ ████║██╔══██╗██╔════╝ ██╔════╝", Style::default().fg(Color::Rgb(99, 179, 237))),
-        ]),
-        Line::from(vec![
-            Span::styled("  ██║██╔████╔██║███████║██║  ███╗█████╗  ", Style::default().fg(Color::Rgb(129, 199, 247))),
-        ]),
-        Line::from(vec![
-            Span::styled("  ██║██║╚██╔╝██║██╔══██║██║   ██║██╔══╝  ", Style::default().fg(Color::Rgb(129, 199, 247))),
-        ]),
-        Line::from(vec![
-            Span::styled("  ██║██║ ╚═╝ ██║██║  ██║╚██████╔╝███████╗", Style::default().fg(Color::Rgb(159, 219, 255))),
-        ]),
-        Line::from(vec![
-            Span::styled("  ╚═╝╚═╝     ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚══════╝", Style::default().fg(Color::Rgb(159, 219, 255))),
-        ]),
-        Line::from(vec![
-            Span::styled("          A U D I T O R  ·  v0.1.0", Style::default().fg(Color::Rgb(100, 120, 160)).add_modifier(Modifier::ITALIC)),
-        ]),
+        Line::from(vec![Span::styled(
+            "  ██╗███╗   ███╗ █████╗  ██████╗ ███████╗",
+            Style::default().fg(Color::Rgb(99, 179, 237)),
+        )]),
+        Line::from(vec![Span::styled(
+            "  ██║████╗ ████║██╔══██╗██╔════╝ ██╔════╝",
+            Style::default().fg(Color::Rgb(99, 179, 237)),
+        )]),
+        Line::from(vec![Span::styled(
+            "  ██║██╔████╔██║███████║██║  ███╗█████╗  ",
+            Style::default().fg(Color::Rgb(129, 199, 247)),
+        )]),
+        Line::from(vec![Span::styled(
+            "  ██║██║╚██╔╝██║██╔══██║██║   ██║██╔══╝  ",
+            Style::default().fg(Color::Rgb(129, 199, 247)),
+        )]),
+        Line::from(vec![Span::styled(
+            "  ██║██║ ╚═╝ ██║██║  ██║╚██████╔╝███████╗",
+            Style::default().fg(Color::Rgb(159, 219, 255)),
+        )]),
+        Line::from(vec![Span::styled(
+            "  ╚═╝╚═╝     ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚══════╝",
+            Style::default().fg(Color::Rgb(159, 219, 255)),
+        )]),
+        Line::from(vec![Span::styled(
+            "          A U D I T O R  ·  v0.2.0",
+            Style::default()
+                .fg(Color::Rgb(100, 120, 160))
+                .add_modifier(Modifier::ITALIC),
+        )]),
     ];
 
     f.render_widget(Paragraph::new(banner).alignment(Alignment::Left), chunks[1]);
 
     // Path input
     let input_style = if app.input_mode {
-        Style::default().fg(Color::Rgb(99, 235, 99)).add_modifier(Modifier::BOLD)
+        Style::default()
+            .fg(Color::Rgb(99, 235, 99))
+            .add_modifier(Modifier::BOLD)
     } else {
         Style::default().fg(Color::Rgb(200, 200, 220))
     };
@@ -611,7 +660,9 @@ fn draw_menu(f: &mut Frame, app: &mut App) {
                 .border_style(Style::default().fg(border_color))
                 .title(Span::styled(
                     " 📁 Scan Path ",
-                    Style::default().fg(Color::Rgb(180, 180, 220)).add_modifier(Modifier::BOLD),
+                    Style::default()
+                        .fg(Color::Rgb(180, 180, 220))
+                        .add_modifier(Modifier::BOLD),
                 )),
         )
         .wrap(Wrap { trim: false });
@@ -622,12 +673,25 @@ fn draw_menu(f: &mut Frame, app: &mut App) {
     let menu_items = vec![
         ListItem::new(Line::from(vec![
             Span::styled("  ▶  ", Style::default().fg(Color::Rgb(99, 235, 99))),
-            Span::styled("Scan Directory", Style::default().fg(Color::Rgb(220, 220, 240)).add_modifier(Modifier::BOLD)),
-            Span::styled("   (press Enter to edit path, then Enter to scan)", Style::default().fg(Color::Rgb(100, 110, 140))),
+            Span::styled(
+                "Scan Directory",
+                Style::default()
+                    .fg(Color::Rgb(220, 220, 240))
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                "   (press Enter to edit path, then Enter to scan)",
+                Style::default().fg(Color::Rgb(100, 110, 140)),
+            ),
         ])),
         ListItem::new(Line::from(vec![
             Span::styled("  ✕  ", Style::default().fg(Color::Rgb(235, 99, 99))),
-            Span::styled("Quit", Style::default().fg(Color::Rgb(220, 220, 240)).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "Quit",
+                Style::default()
+                    .fg(Color::Rgb(220, 220, 240))
+                    .add_modifier(Modifier::BOLD),
+            ),
         ])),
     ];
 
@@ -637,7 +701,10 @@ fn draw_menu(f: &mut Frame, app: &mut App) {
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded)
                 .border_style(Style::default().fg(Color::Rgb(60, 70, 110)))
-                .title(Span::styled(" Menu ", Style::default().fg(Color::Rgb(150, 160, 200)))),
+                .title(Span::styled(
+                    " Menu ",
+                    Style::default().fg(Color::Rgb(150, 160, 200)),
+                )),
         )
         .highlight_style(
             Style::default()
@@ -658,7 +725,10 @@ fn draw_menu(f: &mut Frame, app: &mut App) {
 
 fn draw_scanning(f: &mut Frame, app: &mut App) {
     let area = f.area();
-    f.render_widget(Block::default().style(Style::default().bg(Color::Rgb(15, 15, 25))), area);
+    f.render_widget(
+        Block::default().style(Style::default().bg(Color::Rgb(15, 15, 25))),
+        area,
+    );
 
     let elapsed = app.scan_start.map(|s| s.elapsed().as_secs()).unwrap_or(0);
     let dots = ".".repeat((elapsed % 4) as usize);
@@ -667,7 +737,9 @@ fn draw_scanning(f: &mut Frame, app: &mut App) {
         Line::from(""),
         Line::from(Span::styled(
             "  🔍 Scanning codebase...",
-            Style::default().fg(Color::Rgb(99, 179, 237)).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(Color::Rgb(99, 179, 237))
+                .add_modifier(Modifier::BOLD),
         )),
         Line::from(""),
         Line::from(Span::styled(
@@ -695,7 +767,10 @@ fn draw_scanning(f: &mut Frame, app: &mut App) {
 
 fn draw_results(f: &mut Frame, app: &mut App) {
     let area = f.area();
-    f.render_widget(Block::default().style(Style::default().bg(Color::Rgb(12, 12, 20))), area);
+    f.render_widget(
+        Block::default().style(Style::default().bg(Color::Rgb(12, 12, 20))),
+        area,
+    );
 
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -709,7 +784,14 @@ fn draw_results(f: &mut Frame, app: &mut App) {
         .split(area);
 
     // Tabs
-    let tab_titles = vec!["All", "Format", "Dimensions", "Lazy Load", "Oversized", "Srcset"];
+    let tab_titles = vec![
+        "All",
+        "Format",
+        "Dimensions",
+        "Lazy Load",
+        "Oversized",
+        "Srcset",
+    ];
     let tabs = Tabs::new(tab_titles)
         .select(app.active_tab)
         .block(
@@ -719,7 +801,9 @@ fn draw_results(f: &mut Frame, app: &mut App) {
                 .border_style(Style::default().fg(Color::Rgb(60, 70, 110)))
                 .title(Span::styled(
                     " 🖼  Image Auditor — Results ",
-                    Style::default().fg(Color::Rgb(159, 219, 255)).add_modifier(Modifier::BOLD),
+                    Style::default()
+                        .fg(Color::Rgb(159, 219, 255))
+                        .add_modifier(Modifier::BOLD),
                 )),
         )
         .highlight_style(
@@ -733,26 +817,68 @@ fn draw_results(f: &mut Frame, app: &mut App) {
 
     // Summary bar
     if let Some(ref result) = app.scan_result {
-        let errors = result.issues.iter().filter(|i| matches!(i.severity, IssueSeverity::Error)).count();
-        let warnings = result.issues.iter().filter(|i| matches!(i.severity, IssueSeverity::Warning)).count();
-        let infos = result.issues.iter().filter(|i| matches!(i.severity, IssueSeverity::Info)).count();
+        let errors = result
+            .issues
+            .iter()
+            .filter(|i| matches!(i.severity, IssueSeverity::Error))
+            .count();
+        let warnings = result
+            .issues
+            .iter()
+            .filter(|i| matches!(i.severity, IssueSeverity::Warning))
+            .count();
+        let infos = result
+            .issues
+            .iter()
+            .filter(|i| matches!(i.severity, IssueSeverity::Info))
+            .count();
 
         let summary = Paragraph::new(Line::from(vec![
             Span::styled("  Files: ", Style::default().fg(Color::Rgb(120, 130, 160))),
-            Span::styled(result.files_scanned.to_string(), Style::default().fg(Color::Rgb(200, 210, 240)).add_modifier(Modifier::BOLD)),
-            Span::styled("   Images: ", Style::default().fg(Color::Rgb(120, 130, 160))),
-            Span::styled(result.images_found.to_string(), Style::default().fg(Color::Rgb(200, 210, 240)).add_modifier(Modifier::BOLD)),
-            Span::styled("   Issues: ", Style::default().fg(Color::Rgb(120, 130, 160))),
-            Span::styled(result.issues.len().to_string(), Style::default().fg(Color::Rgb(200, 210, 240)).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                result.files_scanned.to_string(),
+                Style::default()
+                    .fg(Color::Rgb(200, 210, 240))
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                "   Images: ",
+                Style::default().fg(Color::Rgb(120, 130, 160)),
+            ),
+            Span::styled(
+                result.images_found.to_string(),
+                Style::default()
+                    .fg(Color::Rgb(200, 210, 240))
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(
+                "   Issues: ",
+                Style::default().fg(Color::Rgb(120, 130, 160)),
+            ),
+            Span::styled(
+                result.issues.len().to_string(),
+                Style::default()
+                    .fg(Color::Rgb(200, 210, 240))
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::raw("   "),
             Span::styled("● ", Style::default().fg(Color::Rgb(235, 80, 80))),
-            Span::styled(format!("{} errors", errors), Style::default().fg(Color::Rgb(200, 100, 100))),
+            Span::styled(
+                format!("{} errors", errors),
+                Style::default().fg(Color::Rgb(200, 100, 100)),
+            ),
             Span::raw("  "),
             Span::styled("● ", Style::default().fg(Color::Rgb(235, 180, 60))),
-            Span::styled(format!("{} warnings", warnings), Style::default().fg(Color::Rgb(200, 160, 80))),
+            Span::styled(
+                format!("{} warnings", warnings),
+                Style::default().fg(Color::Rgb(200, 160, 80)),
+            ),
             Span::raw("  "),
             Span::styled("● ", Style::default().fg(Color::Rgb(99, 179, 237))),
-            Span::styled(format!("{} info", infos), Style::default().fg(Color::Rgb(100, 150, 200))),
+            Span::styled(
+                format!("{} info", infos),
+                Style::default().fg(Color::Rgb(100, 150, 200)),
+            ),
         ]))
         .block(
             Block::default()
@@ -768,35 +894,58 @@ fn draw_results(f: &mut Frame, app: &mut App) {
     let issues = app.filtered_issues();
     let total = issues.len();
 
-    let rows: Vec<Row> = issues.iter().map(|issue| {
-        let (sev_color, sev_sym) = match issue.severity {
-            IssueSeverity::Error =>   (Color::Rgb(235, 80, 80),  "● ERR "),
-            IssueSeverity::Warning => (Color::Rgb(235, 180, 60), "◆ WRN "),
-            IssueSeverity::Info =>    (Color::Rgb(99, 179, 237), "○ INF "),
-        };
+    let rows: Vec<Row> = issues
+        .iter()
+        .map(|issue| {
+            let (sev_color, sev_sym) = match issue.severity {
+                IssueSeverity::Error => (Color::Rgb(235, 80, 80), "● ERR "),
+                IssueSeverity::Warning => (Color::Rgb(235, 180, 60), "◆ WRN "),
+                IssueSeverity::Info => (Color::Rgb(99, 179, 237), "○ INF "),
+            };
 
-        let file_name = issue.file
-            .file_name()
-            .and_then(|f| f.to_str())
-            .unwrap_or("?");
+            let file_name = issue
+                .file
+                .file_name()
+                .and_then(|f| f.to_str())
+                .unwrap_or("?");
 
-        let file_type = issue.file.extension().map(|ext| ext.to_string_lossy().to_string()).unwrap_or_default();
+            let file_type = issue
+                .file
+                .extension()
+                .map(|ext| ext.to_string_lossy().to_string())
+                .unwrap_or_default();
 
-        let kind_str = issue.kind.to_string();
+            let kind_str = issue.kind.to_string();
 
-        Row::new(vec![
-            Cell::from(Span::styled(sev_sym, Style::default().fg(sev_color).add_modifier(Modifier::BOLD))),
-            Cell::from(Span::styled(file_name, Style::default().fg(Color::Rgb(180, 190, 220)))),
-            Cell::from(Span::styled(file_type, Style::default().fg(Color::Rgb(180, 190, 220)))),
-            Cell::from(Span::styled(issue.line.to_string(), Style::default().fg(Color::Rgb(120, 130, 160)))),
-            Cell::from(Span::styled(kind_str, Style::default().fg(Color::Rgb(150, 200, 180)))),
-            Cell::from(Span::styled(
-                issue.message.chars().take(100).collect::<String>(),
-                Style::default().fg(Color::Rgb(170, 175, 200)),
-            )),
-        ])
-        .height(1)
-    }).collect();
+            Row::new(vec![
+                Cell::from(Span::styled(
+                    sev_sym,
+                    Style::default().fg(sev_color).add_modifier(Modifier::BOLD),
+                )),
+                Cell::from(Span::styled(
+                    file_name,
+                    Style::default().fg(Color::Rgb(180, 190, 220)),
+                )),
+                Cell::from(Span::styled(
+                    file_type,
+                    Style::default().fg(Color::Rgb(180, 190, 220)),
+                )),
+                Cell::from(Span::styled(
+                    issue.line.to_string(),
+                    Style::default().fg(Color::Rgb(120, 130, 160)),
+                )),
+                Cell::from(Span::styled(
+                    kind_str,
+                    Style::default().fg(Color::Rgb(150, 200, 180)),
+                )),
+                Cell::from(Span::styled(
+                    issue.message.chars().take(100).collect::<String>(),
+                    Style::default().fg(Color::Rgb(170, 175, 200)),
+                )),
+            ])
+            .height(1)
+        })
+        .collect();
 
     app.scroll_state = app.scroll_state.content_length(total);
 
@@ -811,8 +960,19 @@ fn draw_results(f: &mut Frame, app: &mut App) {
         ],
     )
     .header(
-        Row::new(vec!["Sev", "File", "FileType", "Line", "Issue Type", "Message"])
-            .style(Style::default().fg(Color::Rgb(100, 110, 160)).add_modifier(Modifier::BOLD | Modifier::UNDERLINED)),
+        Row::new(vec![
+            "Sev",
+            "File",
+            "FileType",
+            "Line",
+            "Issue Type",
+            "Message",
+        ])
+        .style(
+            Style::default()
+                .fg(Color::Rgb(100, 110, 160))
+                .add_modifier(Modifier::BOLD | Modifier::UNDERLINED),
+        ),
     )
     .block(
         Block::default()
@@ -820,7 +980,10 @@ fn draw_results(f: &mut Frame, app: &mut App) {
             .border_type(BorderType::Rounded)
             .border_style(Style::default().fg(Color::Rgb(50, 60, 100)))
             .title(Span::styled(
-                format!(" {} issues (↑↓ navigate · Enter = detail · Tab = filter · s = save JSON) ", total),
+                format!(
+                    " {} issues (↑↓ navigate · Enter = detail · Tab = filter · s = save JSON) ",
+                    total
+                ),
                 Style::default().fg(Color::Rgb(120, 130, 170)),
             )),
     )
@@ -839,13 +1002,18 @@ fn draw_results(f: &mut Frame, app: &mut App) {
             .begin_symbol(Some("↑"))
             .end_symbol(Some("↓"))
             .style(Style::default().fg(Color::Rgb(60, 70, 110))),
-        chunks[2].inner(Margin { vertical: 1, horizontal: 0 }),
+        chunks[2].inner(Margin {
+            vertical: 1,
+            horizontal: 0,
+        }),
         &mut app.scroll_state,
     );
 
     // Search bar
     let search_style = if app.search_mode {
-        Style::default().fg(Color::Rgb(99, 235, 99)).add_modifier(Modifier::BOLD)
+        Style::default()
+            .fg(Color::Rgb(99, 235, 99))
+            .add_modifier(Modifier::BOLD)
     } else {
         Style::default().fg(Color::Rgb(140, 150, 190))
     };
@@ -853,8 +1021,15 @@ fn draw_results(f: &mut Frame, app: &mut App) {
     let search_block = Block::default()
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
-        .border_style(Style::default().fg(if app.search_mode { Color::Rgb(99, 235, 99) } else { Color::Rgb(40, 50, 90) }))
-        .title(Span::styled(" 🔍 Search by filename ", Style::default().fg(Color::Rgb(120, 130, 170))));
+        .border_style(Style::default().fg(if app.search_mode {
+            Color::Rgb(99, 235, 99)
+        } else {
+            Color::Rgb(40, 50, 90)
+        }))
+        .title(Span::styled(
+            " 🔍 Search by filename ",
+            Style::default().fg(Color::Rgb(120, 130, 170)),
+        ));
 
     let search_display = if app.search_mode {
         format!("{}█", app.search_query)
@@ -872,25 +1047,63 @@ fn draw_results(f: &mut Frame, app: &mut App) {
 
     // Help line
     let help = Paragraph::new(Line::from(vec![
-        Span::styled("  q", Style::default().fg(Color::Rgb(99, 235, 180)).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            "  q",
+            Style::default()
+                .fg(Color::Rgb(99, 235, 180))
+                .add_modifier(Modifier::BOLD),
+        ),
         Span::styled("=back  ", Style::default().fg(Color::Rgb(80, 90, 130))),
-        Span::styled("Tab", Style::default().fg(Color::Rgb(99, 235, 180)).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            "Tab",
+            Style::default()
+                .fg(Color::Rgb(99, 235, 180))
+                .add_modifier(Modifier::BOLD),
+        ),
         Span::styled("=category  ", Style::default().fg(Color::Rgb(80, 90, 130))),
-        Span::styled("1-4", Style::default().fg(Color::Rgb(99, 235, 180)).add_modifier(Modifier::BOLD)),
-        Span::styled("=severity filter  ", Style::default().fg(Color::Rgb(80, 90, 130))),
-        Span::styled("f", Style::default().fg(Color::Rgb(99, 235, 180)).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            "1-4",
+            Style::default()
+                .fg(Color::Rgb(99, 235, 180))
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::styled(
+            "=severity filter  ",
+            Style::default().fg(Color::Rgb(80, 90, 130)),
+        ),
+        Span::styled(
+            "f",
+            Style::default()
+                .fg(Color::Rgb(99, 235, 180))
+                .add_modifier(Modifier::BOLD),
+        ),
         Span::styled("=search  ", Style::default().fg(Color::Rgb(80, 90, 130))),
-        Span::styled("s", Style::default().fg(Color::Rgb(99, 235, 180)).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            "s",
+            Style::default()
+                .fg(Color::Rgb(99, 235, 180))
+                .add_modifier(Modifier::BOLD),
+        ),
         Span::styled("=save JSON  ", Style::default().fg(Color::Rgb(80, 90, 130))),
-        Span::styled("c", Style::default().fg(Color::Rgb(99, 235, 180)).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            "c",
+            Style::default()
+                .fg(Color::Rgb(99, 235, 180))
+                .add_modifier(Modifier::BOLD),
+        ),
         Span::styled("=copy path  ", Style::default().fg(Color::Rgb(80, 90, 130))),
-        Span::styled("Enter", Style::default().fg(Color::Rgb(99, 235, 180)).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            "Enter",
+            Style::default()
+                .fg(Color::Rgb(99, 235, 180))
+                .add_modifier(Modifier::BOLD),
+        ),
         Span::styled("=detail", Style::default().fg(Color::Rgb(80, 90, 130))),
     ]))
     .style(Style::default().bg(Color::Rgb(12, 12, 20)));
 
     f.render_widget(help, chunks[4]);
-    
+
     // Success message overlay
     if let Some(instant) = app.save_success_time {
         if instant.elapsed() < Duration::from_secs(3) {
@@ -935,60 +1148,105 @@ fn draw_results(f: &mut Frame, app: &mut App) {
 
 fn draw_detail(f: &mut Frame, app: &mut App) {
     let area = f.area();
-    f.render_widget(Block::default().style(Style::default().bg(Color::Rgb(10, 10, 18))), area);
+    f.render_widget(
+        Block::default().style(Style::default().bg(Color::Rgb(10, 10, 18))),
+        area,
+    );
 
-    let Some(ref issue) = app.detail_issue else { return };
+    let Some(ref issue) = app.detail_issue else {
+        return;
+    };
 
     // Overlay popup
     let popup_area = centered_rect(80, 60, area);
     f.render_widget(Clear, popup_area);
 
     let (sev_color, sev_label) = match issue.severity {
-        IssueSeverity::Error =>   (Color::Rgb(235, 80, 80), "ERROR"),
+        IssueSeverity::Error => (Color::Rgb(235, 80, 80), "ERROR"),
         IssueSeverity::Warning => (Color::Rgb(235, 180, 60), "WARNING"),
-        IssueSeverity::Info =>    (Color::Rgb(99, 179, 237), "INFO"),
+        IssueSeverity::Info => (Color::Rgb(99, 179, 237), "INFO"),
     };
 
     let file_path = issue.file.to_string_lossy().to_string();
-    let file_type = issue.file.extension().map(|ext| ext.to_string_lossy().to_string()).unwrap_or_default();
+    let file_type = issue
+        .file
+        .extension()
+        .map(|ext| ext.to_string_lossy().to_string())
+        .unwrap_or_default();
 
     let mut content = vec![
         Line::from(""),
         Line::from(vec![
-            Span::styled("  Severity  ", Style::default().fg(Color::Rgb(100, 110, 160))),
-            Span::styled(sev_label, Style::default().fg(sev_color).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "  Severity  ",
+                Style::default().fg(Color::Rgb(100, 110, 160)),
+            ),
+            Span::styled(
+                sev_label,
+                Style::default().fg(sev_color).add_modifier(Modifier::BOLD),
+            ),
         ]),
         Line::from(""),
         Line::from(vec![
-            Span::styled("  Issue     ", Style::default().fg(Color::Rgb(100, 110, 160))),
-            Span::styled(issue.kind.to_string(), Style::default().fg(Color::Rgb(150, 220, 200)).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "  Issue     ",
+                Style::default().fg(Color::Rgb(100, 110, 160)),
+            ),
+            Span::styled(
+                issue.kind.to_string(),
+                Style::default()
+                    .fg(Color::Rgb(150, 220, 200))
+                    .add_modifier(Modifier::BOLD),
+            ),
         ]),
         Line::from(""),
         Line::from(vec![
-            Span::styled("  File      ", Style::default().fg(Color::Rgb(100, 110, 160))),
+            Span::styled(
+                "  File      ",
+                Style::default().fg(Color::Rgb(100, 110, 160)),
+            ),
             Span::styled(&file_path, Style::default().fg(Color::Rgb(180, 190, 220))),
         ]),
         Line::from(""),
         Line::from(vec![
-            Span::styled("  File type      ", Style::default().fg(Color::Rgb(100, 110, 160))),
+            Span::styled(
+                "  File type      ",
+                Style::default().fg(Color::Rgb(100, 110, 160)),
+            ),
             Span::styled(&file_type, Style::default().fg(Color::Rgb(180, 190, 220))),
         ]),
         Line::from(vec![
-            Span::styled("  Line      ", Style::default().fg(Color::Rgb(100, 110, 160))),
-            Span::styled(issue.line.to_string(), Style::default().fg(Color::Rgb(180, 190, 220))),
+            Span::styled(
+                "  Line      ",
+                Style::default().fg(Color::Rgb(100, 110, 160)),
+            ),
+            Span::styled(
+                issue.line.to_string(),
+                Style::default().fg(Color::Rgb(180, 190, 220)),
+            ),
         ]),
         Line::from(""),
         Line::from(vec![
-            Span::styled("  Message   ", Style::default().fg(Color::Rgb(100, 110, 160))),
-            Span::styled(&issue.message, Style::default().fg(Color::Rgb(220, 220, 240))),
+            Span::styled(
+                "  Message   ",
+                Style::default().fg(Color::Rgb(100, 110, 160)),
+            ),
+            Span::styled(
+                &issue.message,
+                Style::default().fg(Color::Rgb(220, 220, 240)),
+            ),
         ]),
         Line::from(""),
-        Line::from(vec![
-            Span::styled("  Snippet   ", Style::default().fg(Color::Rgb(100, 110, 160))),
-        ]),
-        Line::from(vec![
-            Span::styled(format!("  {}", issue.snippet), Style::default().fg(Color::Rgb(100, 200, 130)).add_modifier(Modifier::ITALIC)),
-        ]),
+        Line::from(vec![Span::styled(
+            "  Snippet   ",
+            Style::default().fg(Color::Rgb(100, 110, 160)),
+        )]),
+        Line::from(vec![Span::styled(
+            format!("  {}", issue.snippet),
+            Style::default()
+                .fg(Color::Rgb(100, 200, 130))
+                .add_modifier(Modifier::ITALIC),
+        )]),
         Line::from(""),
         Line::from(Span::styled(
             fix_advice(&issue.kind),
@@ -998,37 +1256,44 @@ fn draw_detail(f: &mut Frame, app: &mut App) {
     ];
 
     // LLM suggestion state
-    if app.detail_loading_suggestion {
-        content.push(Line::from(Span::styled(
-            "  ⏳ Asking LLM for fix suggestion...",
-            Style::default().fg(Color::Rgb(99, 179, 237)),
-        )));
-        content.push(Line::from(""));
-    } else if let Some(ref err) = app.detail_suggestion_error {
-        content.push(Line::from(Span::styled(
-            format!("  ⚠ LLM error: {}", err),
-            Style::default().fg(Color::Rgb(235, 80, 80)),
-        )));
-        content.push(Line::from(""));
-    } else if let Some(ref suggestion) = app.detail_suggestion {
-        content.push(Line::from(Span::styled(
-            "  LLM Suggestion",
-            Style::default()
-                .fg(Color::Rgb(150, 220, 200))
-                .add_modifier(Modifier::BOLD),
-        )));
-        content.push(Line::from(""));
-        for line in suggestion.lines() {
+    if !app.detail_patch_confirm_mode {
+        if app.detail_loading_suggestion {
             content.push(Line::from(Span::styled(
-                format!("  {}", line),
-                Style::default().fg(Color::Rgb(200, 210, 240)),
+                "  ⏳ Asking LLM for fix suggestion...",
+                Style::default().fg(Color::Rgb(99, 179, 237)),
             )));
+            content.push(Line::from(""));
+        } else if let Some(ref err) = app.detail_suggestion_error {
+            content.push(Line::from(Span::styled(
+                format!("  ⚠ LLM error: {}", err),
+                Style::default().fg(Color::Rgb(235, 80, 80)),
+            )));
+            content.push(Line::from(""));
+        } else if let Some(ref suggestion) = app.detail_suggestion {
+            content.push(Line::from(Span::styled(
+                "  LLM Suggestion",
+                Style::default()
+                    .fg(Color::Rgb(150, 220, 200))
+                    .add_modifier(Modifier::BOLD),
+            )));
+            content.push(Line::from(""));
+            for line in suggestion.lines() {
+                content.push(Line::from(Span::styled(
+                    format!("  {}", line),
+                    Style::default().fg(Color::Rgb(200, 210, 240)),
+                )));
+            }
+            content.push(Line::from(""));
         }
-        content.push(Line::from(""));
     }
 
+    let is_wrong_format_err = matches!(
+            app.detail_issue.as_ref().map(|i| &i.kind),
+            Some(IssueKind::WrongFormat));
+
     // Patch availability / preview
-    if app.detail_patch_confirm_mode {
+    // Not allowed to transform images
+    if app.detail_patch_confirm_mode && !is_wrong_format_err {
         content.push(Line::from(Span::styled(
             "  Patch Preview",
             Style::default()
@@ -1078,18 +1343,12 @@ fn draw_detail(f: &mut Frame, app: &mut App) {
             )));
         }
         content.push(Line::from(""));
-        content.push(Line::from(Span::styled(
-            "  [a] Ask LLM for fix  ·  [p] Preview/apply patch  ·  [↑/↓ or j/k] Scroll  ·  [Esc / q] Back",
-            Style::default().fg(Color::Rgb(80, 100, 150)),
-        )));
     }
 
     // Clamp scroll so we don't go past the end unnecessarily
     let visible_lines = popup_area.height.saturating_sub(4) as usize;
     let max_scroll = content.len().saturating_sub(visible_lines);
-    let clamped_scroll = app
-        .detail_scroll
-        .min(max_scroll as u16);
+    let clamped_scroll = app.detail_scroll.min(max_scroll as u16);
 
     f.render_widget(
         Paragraph::new(content)
@@ -1113,6 +1372,8 @@ fn fix_advice(kind: &IssueKind) -> String {
     match kind {
         IssueKind::WrongFormat =>
             "  💡 Fix: Convert to WebP using cwebp or squoosh. Use AVIF for best compression.".to_string(),
+        IssueKind::MissingAlt =>
+            "  💡 Fix: Add alt attribute for accessibility and SEO.".to_string(),
         IssueKind::MissingWidthHeight =>
             "  💡 Fix: Add explicit width and height attributes to prevent layout shift (CLS).".to_string(),
         IssueKind::MissingLazyLoading =>
@@ -1215,7 +1476,11 @@ fn apply_suggested_patch(issue: &Issue, patch: &SuggestedPatch) -> Result<()> {
     Ok(())
 }
 
-fn centered_rect(percent_x: u16, percent_y: u16, r: ratatui::layout::Rect) -> ratatui::layout::Rect {
+fn centered_rect(
+    percent_x: u16,
+    percent_y: u16,
+    r: ratatui::layout::Rect,
+) -> ratatui::layout::Rect {
     let popup_layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([

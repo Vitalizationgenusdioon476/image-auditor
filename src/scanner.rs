@@ -44,6 +44,7 @@ impl std::fmt::Display for IssueSeverity {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum IssueKind {
     WrongFormat,
+    MissingAlt,
     MissingWidthHeight,
     MissingLazyLoading,
     OversizedFile,
@@ -54,6 +55,7 @@ impl std::fmt::Display for IssueKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             IssueKind::WrongFormat => write!(f, "Wrong Format (not WebP/AVIF)"),
+            IssueKind::MissingAlt => write!(f, "Missing alt attribute"),
             IssueKind::MissingWidthHeight => write!(f, "Missing width/height"),
             IssueKind::MissingLazyLoading => write!(f, "Missing lazy loading"),
             IssueKind::OversizedFile => write!(f, "Oversized image file"),
@@ -356,19 +358,34 @@ fn check_oversized_file(
 }
 
 fn scan_jsx_image_component(path: &Path, lines: &[&str], issues: &mut Vec<Issue>) {
-    // Detect JSX <Image from next/image or similar without alt
-    for (i, line) in lines.iter().enumerate() {
-        if get_image_jsx_re().is_match(line) {
-            if !line.contains("alt=") {
+    let mut i = 0;
+    while i < lines.len() {
+        if get_image_jsx_re().is_match(lines[i]) {
+            // Collect the full tag until self-closing or closing tag
+            let mut tag_lines = String::new();
+            let mut j = i;
+            while j < lines.len() {
+                tag_lines.push_str(lines[j]);
+                tag_lines.push('\n');
+                if lines[j].contains("/>") || lines[j].contains("</Image>") {
+                    break;
+                }
+                j += 1;
+            }
+
+            if !tag_lines.contains("alt=") {
                 issues.push(Issue {
-                    kind: IssueKind::MissingWidthHeight,
+                    kind: IssueKind::MissingAlt,
                     severity: IssueSeverity::Warning,
                     file: path.to_path_buf(),
                     line: i + 1,
-                    snippet: line.trim().chars().take(80).collect(),
+                    snippet: lines[i].trim().chars().take(80).collect(),
                     message: "JSX <Image> component missing alt attribute (accessibility + SEO).".to_string(),
                 });
             }
+            i = j + 1;
+        } else {
+            i += 1;
         }
     }
 }
