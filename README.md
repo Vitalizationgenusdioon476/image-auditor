@@ -1,46 +1,58 @@
-# 🖼 AI Image Auditor Tool
+# 🖼 Image Auditor
 
-**Find and fix image performance problems in seconds.**
+> **Scan your entire codebase for image performance issues. Fix them with AI. In seconds.**
 
-This tool is a **blazing-fast Rust TUI** that scans your codebase
-for image delivery issues that damage **Core Web Vitals**, **Lighthouse
-scores**, and **SEO performance**.
+Image Auditor is a **Rust-powered terminal tool** that finds every image
+tag hurting your **Lighthouse score, Core Web Vitals, and SEO** — across
+all your HTML, templates, and JS frameworks — then lets your LLM fix them
+in one keypress.
 
-It detects the exact problems that slow down modern sites --- **missing
-lazy loading, wrong formats, layout shifts, and oversized images** ---
-directly inside your HTML, templates, and frontend code.
+Just run it against your repo and see exactly what's broken.
 
-Perfect for **frontend developers, performance engineers, and ecommerce
-teams** who care about **LCP, CLS, and page speed**.
+---
 
-## ⚡ Key Features
+## ⚡ What it does
+```bash
+image-auditor ./my-project
+```
 
--   **Extremely fast Rust scanner** for large codebases
--   **Interactive terminal UI (TUI)** for easy navigation
--   Detects **real Lighthouse / Core Web Vitals problems**
--   Works across **HTML, template engines, and modern JS frameworks**
--   Instant filtering by **severity**
--   Export results to **JSON reports**
--   Copy file paths directly from the UI
--   **AI‑powered automatic code fix suggestions** (OpenAI, Anthropic, or local Ollama)
+Scans thousands of files in seconds, shows every broken `<img>` tag with
+severity, file, and line number — and optionally patches the code for you
+using OpenAI, Anthropic, or a local Ollama model.
 
+![Alt text for the image](./docs/images/image1.png)
+---
 
-## 🔎 Detected Issues
+## 🔎 Issues detected
 
-| Issue | Severity |
-|---|---|
-| Wrong format (PNG/JPG instead of WebP/AVIF) | ⚠ Warning |
-| Missing `width` / `height` attributes (causes CLS) | ✖ Error |
-| Missing `loading="lazy"` | ⚠ Warning |
-| Oversized image file (>200 KiB, local images) | ✖ Error |
-| Missing `srcset` / responsive images | ℹ Info |
-| JSX `<Image>` missing `alt` attribute | ⚠ Warning |
+| Issue | Impact | Severity |
+|---|---|---|
+| PNG/JPG instead of WebP/AVIF | Larger payload, slower LCP | ⚠ Warning |
+| Missing `width` / `height` | Layout shift, high CLS score | ✖ Error |
+| Missing `loading="lazy"` | Wasted bandwidth, slower TTI | ⚠ Warning |
+| Oversized image file (>200 KiB) | Slower LCP, higher bounce rate | ✖ Error |
+| Missing `srcset` | Serving 2× pixels on mobile | ℹ Info |
+| JSX `<Image>` missing `alt` | Accessibility & SEO penalty | ⚠ Warning |
 
-## 📁 Supported File Types
+---
 
-`html`, `phtml`, `htm`, `jsx`, `tsx`, `js`, `ts`, `vue`, `svelte`, `hbs`, `ejs`, `njk`, `php`
+## ✨ Key features
 
-Automatically skips: `node_modules`, `.git`, `dist`, `build`, `.next`
+- **Instant results** — Rust scanner, handles large monorepos without breaking a sweat
+- **Full TUI** — keyboard-driven interface, filter by severity or issue type, search by filename
+- **AI-powered fixes** — press `a` on any issue, review the diff, apply with `y`
+- **Safe patching** — shows a before/after diff preview before touching any file
+- **Multi-framework** — HTML, PHP, Vue, Svelte, JSX/TSX, Handlebars, Nunjucks, EJS and more
+- **JSON export** — pipe results into your own reports or CI checks
+- **Works offline** — AI features are optional; the scanner needs nothing but the binary
+
+---
+
+## 📁 Supported file types
+
+`html` `phtml` `htm` `jsx` `tsx` `js` `ts` `vue` `svelte` `hbs` `ejs` `njk` `php`
+
+Auto-skips: `node_modules` `.git` `dist` `build` `.next`
 
 ## 🎬 Video Demo
 ![demo.gif](docs/images/demo.gif)
@@ -85,26 +97,43 @@ image-auditor /var/www/html
 | `a` (Detail view) | Ask AI for an automatic code fix suggestion |
 | `p` (Detail view) | Preview & apply the AI‑proposed patch (with confirmation) |
 
-## 🤖 AI‑Powered Automatic Code Fix Suggestions
+## 🤖 AI-powered fixes
 
-Turn Image Auditor into your **AI image‑performance co‑pilot**.
+Press **`a`** on any issue and your configured LLM (OpenAI, Anthropic, or
+local Ollama) will read the exact file context, diagnose the problem, and
+propose a minimal code patch — touching only the attributes that are
+actually missing.
+```
+Issue: Missing height attribute — causes layout shift (CLS)
 
-When you open the **Detail** view for any issue, you can:
+  Before  │  <img src="assets/img/hero.png" alt="Hero" width="1280">
+  After   │  <img src="assets/img/hero.png" alt="Hero" width="1280" height="640">
+```
 
--   Press **`a`** to **ask the configured LLM** (OpenAI, Anthropic, or local Ollama) for:
-    - A **natural‑language explanation** of how to fix the problem.
-    - A **concrete code patch** targeting the exact snippet that triggered the issue.
--   If a patch is available, you’ll see:
-    - A clear banner: **“Patch available (press `p` to preview & apply)”**.
-    - Press **`p`** to open a **side‑by‑side diff‑style preview** (Before / After).
-    - Confirm with **`y`** to write the change back to disk, or **`n` / `Esc`** to cancel.
+**The workflow is non-destructive by design:**
 
-This gives you **instant, context‑aware fixes** for things like:
+1. **`a`** — ask the LLM (confirmation prompt guards against accidental token spend)
+2. **`p`** — review the full before/after diff before anything is written
+3. **`y`** — apply, or **`n` / `Esc`** to cancel
+4. The file is patched in-place and the scan **reruns automatically** — fixed issues disappear from the list immediately
 
-- Converting heavy JPG/PNG assets into modern formats.
-- Adding `width`/`height` to kill CLS.
-- Wiring in `loading="lazy"` and `srcset` correctly.
-- Cleaning up templates and JSX/TSX image components.
+**Supported providers** — set `ACTIVE_LLM_PROVIDER` in your `.env`:
+
+| Provider | Variable | Default model       |
+|---|---|---------------------|
+| OpenAI | `OPENAI_API_KEY` | `gpt-5.2`           |
+| Anthropic | `ANTHROPIC_API_KEY` | `claude-sonnet-4-6` |
+| Ollama (local) | — | `qwen3-coder:30b`   |
+
+**Skip the confirmation prompt** when iterating quickly:
+```env
+LLM_SKIP_CONFIRM=1
+```
+
+**Enable verbose mode** to get a full explanation alongside the patch:
+```env
+AI_VERBOSE=1
+```
 
 ### 🔧 Configuring the AI engine
 
@@ -141,7 +170,7 @@ OPENAI_API_KEY=your-openai-api-key
 ANTHROPIC_API_KEY=your-anthropic-api-key
 # Optional:
 # ANTHROPIC_BASE_URL=https://api.anthropic.com
-# ANTHROPIC_MODEL=claude-3-5-sonnet-latest
+# ANTHROPIC_MODEL=claude-sonnet-4-6
 ```
 
 #### Ollama (local)
@@ -149,27 +178,10 @@ ANTHROPIC_API_KEY=your-anthropic-api-key
 ```bash
 ACTIVE_LLM_PROVIDER=ollama
 OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=llama3.2
+OLLAMA_MODEL=qwen3-coder:30b
 ```
 
 Once your environment is set, launch `image-auditor`, open an issue detail, and hit **`a`** to let the AI propose a fix — then **`p` → `y`** to apply it in seconds.
-
-### 🔊 Controlling AI verbosity
-
-By default, Image Auditor tells the AI to **return code only**, with no extra prose, so the Detail view stays clean and patch‑focused.
-
-You can control this with the `AI_VERBOSE` flag in `.env`:
-
-```bash
-# Default (unset or false): code‑only output
-AI_VERBOSE=false
-
-# Verbose mode: allow explanations + code
-AI_VERBOSE=true
-```
-
-- When `AI_VERBOSE=false` (or unset), the prompt instructs the LLM to output **only the structured patch block** (no explanations, no markdown).
-- When `AI_VERBOSE=true`, the AI is allowed to return a **short explanation plus code**, which is rendered under “LLM Suggestion” in the Detail view.
 
 ## 🏗 Build
 
