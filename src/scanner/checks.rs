@@ -47,20 +47,30 @@ pub fn check_missing_dimensions(
     line: usize,
     snippet: &str,
     attrs: &str,
+    tag: &str,
     issues: &mut Vec<Issue>,
 ) {
     let has_fill = has_attr(attrs, "fill");
     if has_fill {
         return;
     }
-    let has_width = has_attr(attrs, "width");
-    let has_height = has_attr(attrs, "height");
+
+    // If the tag contains PHP/template expressions, the regex attrs capture
+    // may be incomplete (e.g. ternaries break `[^?]*`). Fall back to a raw
+    // substring search on the full tag text for these two attribute names.
+    let tag_lower = tag.to_lowercase();
+    let has_template = tag_lower.contains("<?");
+
+    let has_width  = has_attr(attrs, "width")
+        || (has_template && tag_lower.contains("width"));
+    let has_height = has_attr(attrs, "height")
+        || (has_template && tag_lower.contains("height"));
 
     let missing = match (has_width, has_height) {
         (false, false) => "width and height",
-        (false, true) => "width",
-        (true, false) => "height",
-        (true, true) => return,
+        (false, true)  => "width",
+        (true,  false) => "height",
+        (true,  true)  => return,
     };
 
     issues.push(Issue {
@@ -235,7 +245,7 @@ mod tests {
     #[test]
     fn missing_both_dimensions() {
         let mut issues = vec![];
-        check_missing_dimensions(path(), 1, "<img>", r#"src="a.jpg""#, &mut issues);
+        check_missing_dimensions(path(), 1, "<img>", r#"src="a.jpg""#, r#"<img src="a.jpg">"#, &mut issues);
         assert_eq!(issues.len(), 1);
         assert!(issues[0].message.contains("width and height"));
     }
@@ -243,7 +253,7 @@ mod tests {
     #[test]
     fn missing_only_height() {
         let mut issues = vec![];
-        check_missing_dimensions(path(), 1, "<img>", r#"src="a.jpg" width="100""#, &mut issues);
+        check_missing_dimensions(path(), 1, "<img>", r#"src="a.jpg" width="100""#, r#"<img src="a.jpg" width="100">"#, &mut issues);
         assert_eq!(issues.len(), 1);
         assert!(issues[0].message.contains("height"));
     }
@@ -254,15 +264,26 @@ mod tests {
         check_missing_dimensions(
             path(), 1, "<img>",
             r#"src="a.jpg" width="100" height="50""#,
+            r#"<img src="a.jpg" width="100" height="50">"#,
             &mut issues,
         );
         assert!(issues.is_empty());
     }
 
     #[test]
+    fn php_ternary_width_height_no_issue() {
+        // PHP ternary expressions like <?= $w ? 'width="..."' : 'width="1"' ?>
+        // break the attrs capture group — must check the full tag text.
+        let tag = r#"<img src="logo.png" <?= $w ? 'width="80"' : 'width="1"' ?> <?= $h ? 'height="30"' : 'height="1"' ?>/>"#;
+        let mut issues = vec![];
+        check_missing_dimensions(path(), 1, tag, "", tag, &mut issues);
+        assert!(issues.is_empty(), "unexpected issues: {:?}", issues);
+    }
+
+    #[test]
     fn fill_prop_skips_dimension_check() {
         let mut issues = vec![];
-        check_missing_dimensions(path(), 1, "<img>", r#"fill src="a.jpg""#, &mut issues);
+        check_missing_dimensions(path(), 1, "<img>", r#"fill src="a.jpg""#, r#"<img fill src="a.jpg">"#, &mut issues);
         assert!(issues.is_empty());
     }
 

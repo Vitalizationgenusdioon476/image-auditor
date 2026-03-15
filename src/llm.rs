@@ -29,6 +29,34 @@ pub fn create_llm_client(cfg: &LlmConfig) -> Result<Arc<dyn LlmClient>> {
     }
 }
 
+/// Strip artefacts the LLM sometimes adds to BEFORE/AFTER blocks:
+///   - Leading/trailing newlines
+///   - Markdown code fences (```html, ```jsx, ``` etc.)
+///   - Line-number prefixes like "   5: " or ">>>  5: " produced by our
+///     context format (defensive — shouldn't appear, but just in case)
+fn sanitize_patch_block(raw: &str) -> String {
+    use std::sync::OnceLock;
+    static LINE_PREFIX_RE: OnceLock<regex::Regex> = OnceLock::new();
+    let re = LINE_PREFIX_RE
+        .get_or_init(|| regex::Regex::new(r"(?m)^(?:>>>|   )\s*\d+: ?").unwrap());
+
+    let trimmed = raw.trim_matches('\n');
+
+    // Strip opening code fence + language tag if present (```html, ```jsx, etc.)
+    let inner = if let Some(rest) = trimmed.strip_prefix("```") {
+        let after_lang = rest.find('\n').map(|i| &rest[i + 1..]).unwrap_or(rest);
+        after_lang
+            .strip_suffix("```")
+            .map(|s| s.trim_matches('\n'))
+            .unwrap_or(after_lang)
+    } else {
+        trimmed
+    };
+
+    // Strip line-number prefixes the LLM might have copied from our context display
+    re.replace_all(inner, "").into_owned()
+}
+
 fn parse_suggestion_with_patch(raw: &str) -> LlmSuggestion {
     // Very lightweight parser for the ---PATCH--- block described in the plan.
     if let Some(start) = raw.find("---PATCH---") {
@@ -45,14 +73,14 @@ fn parse_suggestion_with_patch(raw: &str) -> LlmSuggestion {
             if let Some(bm) = block.find(before_marker) {
                 if let Some(eb) = block[bm..].find(end_before) {
                     let body = &block[bm + before_marker.len()..bm + eb];
-                    before = body.trim_matches('\n').to_string();
+                    before = sanitize_patch_block(body);
                 }
             }
 
             if let Some(am) = block.find(after_marker) {
                 if let Some(ea) = block[am..].find(end_after) {
                     let body = &block[am + after_marker.len()..am + ea];
-                    after = body.trim_matches('\n').to_string();
+                    after = sanitize_patch_block(body);
                 }
             }
 
@@ -349,7 +377,8 @@ If no safe patch is possible output exactly: NO_PATCH",
 }
 
 /// Read `radius` lines before and after `target_line` (1-based) from `path`.
-/// Each line is prefixed with its line number so the LLM can orient itself.
+/// The target line is annotated separately so the LLM never sees the marker
+/// as part of the line content it should copy into a patch BEFORE block.
 fn read_file_context(path: &std::path::Path, target_line: usize, radius: usize) -> String {
     let Ok(content) = std::fs::read_to_string(path) else {
         return "(file not readable)".to_string();
@@ -358,14 +387,10 @@ fn read_file_context(path: &std::path::Path, target_line: usize, radius: usize) 
     let start = target_line.saturating_sub(radius + 1);
     let end = (target_line + radius).min(lines.len());
 
-    lines[start..end]
-        .iter()
-        .enumerate()
-        .map(|(i, l)| {
-            let lineno = start + i + 1;
-            let marker = if lineno == target_line { ">>>" } else { "   " };
-            format!("{} {:4}: {}", marker, lineno, l)
-        })
-        .collect::<Vec<_>>()
-        .join("\n")
+    let mut out = format!("(line {} is the issue — copy it verbatim into BEFORE)\n", target_line);
+    for (i, l) in lines[start..end].iter().enumerate() {
+        let lineno = start + i + 1;
+        out.push_str(&format!("{:4}: {}\n", lineno, l));
+    }
+    out
 }

@@ -141,7 +141,7 @@ pub(crate) fn scan_file(path: &Path, content: &str, root: &Path) -> Vec<Issue> {
         };
 
         check_wrong_format(path, line_num, &snippet, attrs, &mut issues);
-        check_missing_dimensions(path, line_num, &snippet, attrs, &mut issues);
+        check_missing_dimensions(path, line_num, &snippet, attrs, tag, &mut issues);
         check_missing_lazy(path, line_num, &snippet, attrs, &mut issues);
         check_missing_srcset(path, line_num, &snippet, attrs, &mut issues);
         check_oversized_file(path, line_num, &snippet, attrs, root, &mut issues);
