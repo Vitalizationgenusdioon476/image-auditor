@@ -27,8 +27,6 @@ pub fn draw_detail(f: &mut Frame, app: &mut App) {
             draw_patch_success(f, ps, area);
             return;
         }
-    } else if app.patch_success.is_some() {
-        app.patch_success = None;
     }
 
     // ── Extract owned data — scope ends before build_body re-borrows app ──
@@ -130,6 +128,8 @@ pub fn draw_detail(f: &mut Frame, app: &mut App) {
     // ── Help ──────────────────────────────────────────────────────────────
     let help = if app.detail_patch_confirm_mode {
         help_bar(&[("y", "apply"), ("n / Esc", "cancel"), ("↑↓ j k", "scroll")])
+    } else if app.detail_llm_confirm_mode {
+        help_bar(&[("y", "confirm"), ("n / Esc", "cancel")])
     } else {
         help_bar(&[
             ("a", "ask LLM"),
@@ -143,6 +143,11 @@ pub fn draw_detail(f: &mut Frame, app: &mut App) {
         Paragraph::new(help).style(Style::default().bg(BG_SURFACE)),
         layout[2],
     );
+
+    // ── LLM confirmation modal (rendered last so it sits on top) ──────────
+    if app.detail_llm_confirm_mode {
+        draw_llm_confirm(f, area);
+    }
 }
 
 // ─── Body content builder ────────────────────────────────────────────────────
@@ -348,6 +353,56 @@ fn draw_patch_success(f: &mut Frame, ps: &PatchSuccess, area: Rect) {
                         Style::default()
                             .fg(ACCENT_GREEN)
                             .add_modifier(Modifier::BOLD),
+                    )),
+            ),
+        popup,
+    );
+}
+
+// ─── LLM confirmation modal ───────────────────────────────────────────────────
+
+fn draw_llm_confirm(f: &mut Frame, area: Rect) {
+    let popup = centered_rect(52, 36, area);
+    f.render_widget(Clear, popup);
+
+    let content = vec![
+        Line::from(""),
+        Line::from(Span::styled(
+            "  This will send the issue context to your",
+            Style::default().fg(TEXT_SECONDARY),
+        )),
+        Line::from(Span::styled(
+            "  configured LLM provider and consume tokens.",
+            Style::default().fg(TEXT_SECONDARY),
+        )),
+        Line::from(""),
+        Line::from(Span::styled(
+            "  Set LLM_SKIP_CONFIRM=1 in .env to skip this.",
+            Style::default().fg(TEXT_MUTED),
+        )),
+        Line::from(""),
+        Line::from(vec![
+            Span::styled("  Press ", Style::default().fg(TEXT_SECONDARY)),
+            Span::styled("y", Style::default().fg(ACCENT_GREEN).add_modifier(Modifier::BOLD)),
+            Span::styled(" to proceed or ", Style::default().fg(TEXT_SECONDARY)),
+            Span::styled("n / Esc", Style::default().fg(SEV_WARNING).add_modifier(Modifier::BOLD)),
+            Span::styled(" to cancel.", Style::default().fg(TEXT_SECONDARY)),
+        ]),
+        Line::from(""),
+    ];
+
+    f.render_widget(
+        Paragraph::new(content)
+            .wrap(Wrap { trim: false })
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .border_type(BorderType::Rounded)
+                    .border_style(Style::default().fg(SEV_WARNING))
+                    .style(Style::default().bg(BG_ELEVATED))
+                    .title(Span::styled(
+                        " ⚡ Ask LLM for a fix? ",
+                        Style::default().fg(SEV_WARNING).add_modifier(Modifier::BOLD),
                     )),
             ),
         popup,

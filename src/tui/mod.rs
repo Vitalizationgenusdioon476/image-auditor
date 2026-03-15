@@ -81,6 +81,7 @@ fn run_loop<B: ratatui::backend::Backend>(
 
         poll_scan(app);
         poll_llm(app);
+        poll_patch_success(app);
 
         let timeout = TICK.saturating_sub(last_tick.elapsed());
         if event::poll(timeout)? {
@@ -150,6 +151,29 @@ fn poll_llm(app: &mut App) {
 }
 
 // ─── Draw dispatch ────────────────────────────────────────────────────────────
+
+fn poll_patch_success(app: &mut App) {
+    if app
+        .patch_success
+        .as_ref()
+        .map(|ps| ps.at.elapsed() >= Duration::from_secs(4))
+        .unwrap_or(false)
+    {
+        // Timer expired with no keypress — navigate to Results and clear all
+        // detail state so the user never lands back on stale issue data.
+        app.patch_success = None;
+        app.screen = Screen::Results;
+        app.detail_issue = None;
+        app.detail_suggestion = None;
+        app.detail_suggested_patch = None;
+        app.detail_suggestion_error = None;
+        app.detail_loading_suggestion = false;
+        app.detail_patch_confirm_mode = false;
+        app.detail_llm_confirm_mode = false;
+        app.detail_patch_error = None;
+        app.detail_scroll = 0;
+    }
+}
 
 fn draw(f: &mut Frame, app: &mut App) {
     match app.screen {

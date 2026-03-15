@@ -166,6 +166,11 @@ pub fn handle_detail(app: &mut App, key: KeyCode) {
         return;
     }
 
+    if app.detail_llm_confirm_mode {
+        handle_llm_confirm(app, key);
+        return;
+    }
+
     match key {
         KeyCode::Esc | KeyCode::Char('q') | KeyCode::Backspace => reset_detail(app),
         KeyCode::Char('a') => handle_ask_llm(app),
@@ -226,18 +231,43 @@ fn handle_ask_llm(app: &mut App) {
     if app.detail_loading_suggestion {
         return;
     }
+
+    // Skip confirmation when LLM_SKIP_CONFIRM=1/true/yes
+    let skip = std::env::var("LLM_SKIP_CONFIRM")
+        .map(|v| v == "1" || v.eq_ignore_ascii_case("true") || v.eq_ignore_ascii_case("yes"))
+        .unwrap_or(false);
+
+    if skip {
+        fire_llm(app);
+    } else {
+        app.detail_llm_confirm_mode = true;
+    }
+}
+
+fn handle_llm_confirm(app: &mut App, key: KeyCode) {
+    match key {
+        KeyCode::Char('y') => {
+            app.detail_llm_confirm_mode = false;
+            fire_llm(app);
+        }
+        KeyCode::Char('n') | KeyCode::Esc | KeyCode::Char('q') | KeyCode::Backspace => {
+            app.detail_llm_confirm_mode = false;
+        }
+        _ => {}
+    }
+}
+
+fn fire_llm(app: &mut App) {
     let Some(issue) = app.detail_issue.clone() else { return };
     let Some(client) = app.llm_client.clone() else {
         app.detail_suggestion_error = Some("LLM provider not configured. Check your .env file.".into());
         return;
     };
-
     app.detail_loading_suggestion = true;
     app.detail_suggestion = None;
     app.detail_suggested_patch = None;
     app.detail_suggestion_error = None;
     app.detail_scroll = 0;
-
     trigger_llm_suggest(app, issue, client);
 }
 
@@ -268,6 +298,7 @@ fn reset_detail(app: &mut App) {
     app.detail_suggestion_error = None;
     app.detail_loading_suggestion = false;
     app.detail_patch_confirm_mode = false;
+    app.detail_llm_confirm_mode = false;
     app.detail_patch_error = None;
     app.detail_scroll = 0;
     app.patch_success = None;

@@ -58,6 +58,7 @@ pub struct App {
     pub detail_suggestion_error: Option<String>,
     pub detail_suggestion_rx: Option<mpsc::Receiver<Result<LlmSuggestion>>>,
     pub detail_patch_confirm_mode: bool,
+    pub detail_llm_confirm_mode: bool,
     pub detail_patch_error: Option<String>,
     pub patch_success: Option<PatchSuccess>,
 
@@ -109,6 +110,7 @@ impl App {
             detail_suggestion_error: None,
             detail_suggestion_rx: None,
             detail_patch_confirm_mode: false,
+            detail_llm_confirm_mode: false,
             detail_patch_error: None,
             patch_success: None,
             save_success_time: None,
