@@ -3,7 +3,8 @@ version: 2
 project_name: image-auditor
 
 before:
-  hooks: []
+  hooks:
+    - cargo install cargo-zigbuild
 
 builds:
   - builder: rust
