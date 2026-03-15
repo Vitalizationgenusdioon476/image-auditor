@@ -99,7 +99,7 @@ pub fn draw_menu(f: &mut Frame, app: &mut App) {
                 Style::default().fg(TEXT_PRIMARY).add_modifier(Modifier::BOLD),
             ),
             Span::styled(
-                "   Enter to edit path · Enter again to scan",
+                "   Enter to edit path",
                 Style::default().fg(TEXT_MUTED),
             ),
         ])),

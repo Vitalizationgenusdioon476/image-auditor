@@ -315,13 +315,19 @@ pub fn build_issue_prompt(issue: &Issue) -> String {
         .map(|e| e.to_string_lossy().to_string())
         .unwrap_or_else(|| "unknown".into());
 
-    // Read ±4 lines around the issue for real context — the stored snippet is
-    // truncated to 80 chars and may be incomplete.
     let context = read_file_context(&issue.file, issue.line, 4);
 
     let verbose = std::env::var("AI_VERBOSE")
         .map(|v| v == "1" || v.eq_ignore_ascii_case("true") || v.eq_ignore_ascii_case("yes"))
         .unwrap_or(false);
+
+    // Extra guidance injected only for the MissingWidthHeight issue so the LLM
+    // never falls back to width="0" height="0".
+    let dim_hint = if matches!(issue.kind, crate::scanner::IssueKind::MissingWidthHeight) {
+        dimension_hint()
+    } else {
+        ""
+    };
 
     let patch_instructions = format!(
         "---PATCH---\n\
@@ -340,9 +346,10 @@ AFTER:\n\
             "You are fixing a specific image-delivery issue in {file_type} source code.\n\
 File: {file_path}  Line: {line}\n\
 Issue type: {kind}\n\
-Diagnosis: {msg}\n\n\
+Diagnosis: {msg}\n\
+{dim_hint}\n\
 File context (line {line} is the target):\n\
-{context}\n\n\
+{context}\n\
 Rules:\n\
 - Add or change ONLY what the diagnosis says is missing or wrong.\n\
 - Do NOT add attributes that are already present in the code above.\n\
@@ -360,9 +367,10 @@ Briefly explain the fix, then emit:\n\
         "You are fixing a specific image-delivery issue in {file_type} source code.\n\
 File: {file_path}  Line: {line}\n\
 Issue type: {kind}\n\
-Diagnosis: {msg}\n\n\
+Diagnosis: {msg}\n\
+{dim_hint}\n\
 File context (line {line} is the target):\n\
-{context}\n\n\
+{context}\n\
 Rules:\n\
 - Add or change ONLY what the diagnosis says is missing or wrong.\n\
 - Do NOT add attributes that are already present in the code above.\n\
@@ -374,6 +382,14 @@ If no safe patch is possible output exactly: NO_PATCH",
         kind = issue.kind,
         msg = issue.message,
     )
+}
+
+/// Build a dimension-specific hint for the MissingWidthHeight issue.
+fn dimension_hint() -> &'static str {
+    "Width/height guidance:\n\
+- Infer likely dimensions from the src path, filename, and CSS classes (e.g. 'banner' → 1200x400, 'avatar'/'icon' → 48x48, 'logo' → 160x50, 'hero' → 1280x720).\n\
+- NEVER use 0 or 1 — those values break layout and are worse than omitting the attributes.\n\
+- If you truly cannot infer reasonable dimensions, output NO_PATCH instead.\n"
 }
 
 /// Read `radius` lines before and after `target_line` (1-based) from `path`.

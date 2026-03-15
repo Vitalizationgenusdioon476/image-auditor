@@ -192,9 +192,9 @@ pub fn check_oversized_file(
 mod tests {
     use super::{
         check_missing_dimensions, check_missing_lazy, check_missing_srcset,
-        check_oversized_file, check_wrong_format,
+        check_wrong_format,
     };
-    use crate::scanner::types::{Issue, IssueKind, IssueSeverity};
+    use crate::scanner::types::{IssueKind, IssueSeverity};
     use std::path::Path;
 
     fn path() -> &'static Path {

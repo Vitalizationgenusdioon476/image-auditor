@@ -120,6 +120,10 @@ Then edit `.env` and pick your provider:
 ```bash
 # Possible values: openai, anthropic, ollama
 ACTIVE_LLM_PROVIDER=openai
+OPENAI_API_KEY=sk-...
+
+# Optional: skip confirmation prompt in the TUI
+LLM_SKIP_CONFIRM=true
 ```
 
 #### OpenAI
