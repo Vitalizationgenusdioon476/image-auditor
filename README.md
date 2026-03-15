@@ -65,8 +65,13 @@ cargo install --path .
 
 ### macOS
 ```bash
+# Install
 brew tap 0franco/ai-image-auditor
 brew install image-auditor
+
+# Upgrade
+brew update
+brew upgrade image-auditor
 ```
 
 # 🧪 Usage
@@ -79,6 +84,9 @@ image-auditor
 image-auditor ./my-project
 image-auditor /var/www/html
 ```
+
+**AI fixes are optional.** The scanner works with no configuration.
+To enable them, create a `.env` file in the directory where you run the tool
 
 ## 🖥 TUI Controls
 
