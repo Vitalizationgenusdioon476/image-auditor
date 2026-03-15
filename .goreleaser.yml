@@ -1,0 +1,39 @@
+version: 2
+
+project_name: image-auditor
+
+before:
+  hooks:
+    - cargo install cargo-zigbuild
+
+builds:
+  - builder: rust
+    targets:
+      - x86_64-apple-darwin
+      - aarch64-apple-darwin
+
+archives:
+  - format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: "checksums.txt"
+
+release:
+  github:
+    owner: 0franco
+    name: image-auditor
+
+brews:
+  - name: image-auditor
+    repository:
+      owner: 0franco
+      name: homebrew-ai-image-auditor
+      token: "{{ .Env.TAP_GITHUB_TOKEN }}"
+    directory: Formula
+    homepage: "https://github.com/0franco/image-auditor"
+    description: "Find Lighthouse image issues instantly. Audits CLS, lazy loading, formats, and responsive images across your codebase."
+    license: "MIT"
+    install: bin.install "image-auditor"
+    test: |
+      system "#{bin}/image-auditor", "--version"
