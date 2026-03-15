@@ -177,13 +177,19 @@ fn build_body(app: &App) -> Vec<Line<'static>> {
         lines.push(Line::from(""));
     }
 
-    // LLM suggestion text (verbose mode)
+    // LLM suggestion text — always shown when present.
+    // In verbose mode the response contains both prose AND a ---PATCH--- block;
+    // we strip the raw patch block from the text display because the diff view
+    // below renders it properly.
     if let Some(ref text) = app.detail_suggestion {
-        if app.detail_suggested_patch.is_none() {
-            // No patch block found — show full suggestion text
+        let display_text: String = match text.find("---PATCH---") {
+            Some(idx) => text[..idx].trim_end().to_string(),
+            None => text.clone(),
+        };
+        if !display_text.is_empty() {
             lines.push(section_header("LLM Suggestion"));
             lines.push(Line::from(""));
-            for l in text.lines() {
+            for l in display_text.lines() {
                 lines.push(Line::from(Span::styled(
                     format!("  {}", l),
                     Style::default().fg(TEXT_SECONDARY),

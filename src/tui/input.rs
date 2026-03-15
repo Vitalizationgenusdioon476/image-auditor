@@ -142,6 +142,12 @@ fn handle_results_search(app: &mut App, key: KeyCode) {
 }
 
 pub fn handle_detail(app: &mut App, key: KeyCode) {
+    // If the patch success overlay is active, any key navigates to Results.
+    if app.patch_success.is_some() {
+        reset_detail(app);
+        return;
+    }
+
     // Scrolling applies in all detail sub-states
     match key {
         KeyCode::Up | KeyCode::Char('k') => {
