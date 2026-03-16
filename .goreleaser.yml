@@ -29,6 +29,7 @@ nfpms:
     formats:
       - deb
     bindir: /usr/local/bin
+    file_name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
 
 checksum:
   name_template: "checksums.txt"
