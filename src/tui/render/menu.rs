@@ -30,6 +30,8 @@ pub fn draw_menu(f: &mut Frame, app: &mut App) {
         .margin(3)
         .split(area);
 
+    let version = format!("v{}", env!("CARGO_PKG_VERSION"));
+
     // ── ASCII banner ──────────────────────────────────────────────────────
     let banner_lines = [
         ("  ██╗███╗   ███╗ █████╗  ██████╗ ███████╗", Color::Rgb(99, 179, 237)),
@@ -46,7 +48,7 @@ pub fn draw_menu(f: &mut Frame, app: &mut App) {
         .collect();
 
     banner.push(Line::from(Span::styled(
-        "          A U D I T O R  ·  v0.2.0",
+        format!("          A U D I T O R  ·  {}", version),
         Style::default()
             .fg(Color::Rgb(90, 110, 155))
             .add_modifier(Modifier::ITALIC),

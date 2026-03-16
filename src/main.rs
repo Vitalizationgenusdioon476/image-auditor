@@ -9,7 +9,7 @@ use clap::Parser;
 use std::path::PathBuf;
 
 #[derive(Parser)]
-#[command(name = "image-auditor", version = "0.2.0", author, about)]
+#[command(name = "image-auditor", version = env!("CARGO_PKG_VERSION"), author, about)]
 struct Cli {
     /// Path to scan (defaults to current directory)
     #[arg(value_name = "PATH")]
